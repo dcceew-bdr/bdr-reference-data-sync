@@ -1,0 +1,68 @@
+
+
+
+
+[[catalogs]]
+token = "tern-cv"
+label = "TERN Controlled Vocabularies"
+source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
+
+[[catalogs.vocabularies]] # In TERN-CV catalog
+name = "tern-cv"
+root_node = ""  # No root node, discover by concept schemes
+#root_node = "http://linked.data.gov.au/def/tern-cv"  # Note this is HTTP, not HTTPS, this is intentional
+exclude_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
+exclude_collections = []
+
+#[[catalogs]]
+#token = "abis"
+#label = "ABIS Vocabularies"
+#source = "file://./sources/abis-themes.ttl"
+#
+#[[catalogs.vocabularies]] # In TERN-CV catalog
+#name = "abis-themes"
+#root_node = "https://linked.data.gov.au/def/abis/themes" # Concept Scheme
+
+
+
+
+#[[catalogs]]
+#token = "data-roles"
+#label = "Data Roles"
+#source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
+#
+#[[catalogs.vocabularies]] # In TERN-CV catalog
+#name = "data-roles"
+#root_node = "https://linked.data.gov.au/def/data-roles" # Concept Scheme
+#exclude_concept_schemes = []
+#exclude_collections = []
+#
+#
+#
+#
+#[[catalogs]]
+#token = "nrm"
+#label = "Ecological Monitoring System Australia (EMSA) Controlled Vocabularies"
+#source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
+#
+#[[catalogs.vocabularies]] # In NRM/EMSA catalog
+#name = "emsa"
+#root_node = "https://linked.data.gov.au/def/nrm"
+## exclude is a blacklist, don't harvest concepts from these schemes or collections
+#exclude_concept_schemes = ["http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification", "http://linked.data.gov.au/dataset/bioregion/IBRA7"]
+#exclude_collections = ["https://linked.data.gov.au/def/nrm/31a9f83d-9c8b-4d68-8dd7-d1b7a9a4197b",]  # exclude TERN FeatureTypes profile
+##
+#[[catalogs.vocabularies]] # In NRM/EMSA catalog
+#name = "aclump"
+#root_node = "http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification"
+## include is a whitelist, it skips every concept _except_ those in this scheme or collection
+#include_concept_schemes = ["http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification"]
+##exclude_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
+##exclude_collections = []
+
+
+[keywords_mappings]
+"http://linked.data.gov.au/def/tern-cv/dd085299-ae86-4371-ae15-61dfa432f924" = ["attributes"]  # Attributes ConceptScheme
+"http://linked.data.gov.au/def/tern-cv/6ea67eea-c2ae-4240-952a-fdb95b2df8ab" = ["conservation", "jurisdictions"]  # Conservation Status Jurisdictions ConceptScheme
+"http://linked.data.gov.au/def/tern-cv/701a9a6d-f67e-4098-bae9-07ce1fd0ce63" = ["data", "resolution"] # Data resolution ConceptScheme
+"http://linked.data.gov.au/def/tern-cv/68af3d25-c801-4089-afff-cf701e2bd61d" = ["feature", "type"] # Feature Type ConceptScheme
