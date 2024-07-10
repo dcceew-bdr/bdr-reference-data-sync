@@ -1,27 +1,43 @@
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-@prefix cs: <https://linked.data.gov.au/def/abis/themes> .
-@prefix : <https://linked.data.gov.au/def/abis/themes/> .
+@prefix cs: <https://linked.data.gov.au/def/abis/vocab-themes> .
+@prefix : <https://linked.data.gov.au/def/abis/vocab-themes/> .
 
 
 cs: a skos:ConceptScheme ;
-    skos:hasTopConcept :featureTypes ;
+    skos:hasTopConcept :feature-types ;
+    skos:hasTopConcept :sampling-types ;
+    skos:hasTopConcept :data-roles ;
+    skos:hasTopConcept :procedures ;
+    skos:hasTopConcept :observation-types ;
     skos:prefLabel "ABIS Themed-Vocabulary Themes"@en;
     .
 
-:featureTypes a skos:Concept ;
-    skos:prefLabel "ABIS Theme: Feature Types";
-    skos:definition "Vocabularies with the dcat:theme featureType can be used where concepts go in the tern:featureType slot"@en;
+:data-roles a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Data Roles";
+    skos:definition "Vocabularies with the dcat:theme abis/data-themes:data-roles can be used for prov role attributions on ABIS Datasets."@en;
     skos:topConceptOf cs: ;
     .
 
-:samplingTypes a skos:Concept ;
-    skos:prefLabel "ABIS Theme: Sampling Types";
-    skos:definition "Vocabularies with the dcat:theme sampleType can be used where concepts go in the tern:samplingType or sdo:additionalType slot on a tern:Sampling or sosa:Sampling."@en;
+:feature-types a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Feature Types";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:feature-type can be used where concepts go in the tern:featureType slot"@en;
     skos:topConceptOf cs: ;
     .
 
-:observationTypes a skos:Concept ;
-    skos:prefLabel "ABIS Theme: Observation Types";
-    skos:definition "Vocabularies with the dcat:theme observationType can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
+:sampling-types a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Sampling Types";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:sample-type can be used where concepts go in the tern:samplingType or sdo:additionalType slot on a tern:Sampling or sosa:Sampling."@en;
+    skos:topConceptOf cs: ;
+    .
+
+:observation-types a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Observation Types";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
+    skos:topConceptOf cs: ;
+    .
+
+:procedures a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Procedures";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
     skos:topConceptOf cs: ;
     .

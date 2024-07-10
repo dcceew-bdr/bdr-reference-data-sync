@@ -4,16 +4,18 @@ from typing import List, Dict, Any, Set, Tuple, Union, Awaitable
 import asyncio
 import rdflib
 from rdflib.plugins.stores import sparqlstore
-from rdflib.namespace import RDF, RDFS, DCAT, SKOS, OWL, DCTERMS
+from rdflib.namespace import RDF, RDFS, DCAT, SKOS, OWL, DCTERMS, VANN, XSD, SDO
 from rdflib.term import Identifier
 from copy import deepcopy, copy
 import httpx
 
-from .local_fetch import get_broadest_concepts, get_all_concepts, get_concept_scheme_members, get_collection_members
-from .sparql_fetch import sparql_describe, sparql_subjects, sparql_objects, sparql_concept_scheme_members, \
-    sparql_collection_members, sparql_all_concepts
+from .local_fetch import get_broadest_concepts, get_all_concepts, get_concept_scheme_hierarchy, get_concept_scheme_concepts, \
+    get_collection_immediate_members, get_collection_all_members
+from .sparql_fetch import sparql_describe, sparql_subjects, sparql_objects, sparql_concept_scheme_hierarchy, sparql_concept_scheme_concepts,\
+    sparql_collection_all_members, sparql_collection_immediate_members, sparql_all_concepts
 from src.harvesters.sparql_fetch import sparql_broadest_concepts
-from ..voc_graph import VocabGraphDetails, TERN
+from ..config import get_value
+from ..voc_graph import VocabGraphDetails, TERN, make_voc_graph
 
 
 async def async_task_association(task: Union[asyncio.Task, Awaitable], assoc: Any) -> Union[Exception, Tuple]:
@@ -29,10 +31,16 @@ class VocabHarvester:
     source_graph: rdflib.Graph
     vocab_type: rdflib.URIRef
     root_node: rdflib.URIRef
-    root_node_details: rdflib.Graph # CBD of root_node
+    root_node_details: rdflib.Graph  # CBD of root_node
+    themes: List[rdflib.URIRef]
+    keywords: List[str]
+    vann_prefix: Union[str, None]
+    vann_namespace: Union[str, None]
     concept_schemes: Set[rdflib.URIRef]
     concept_collections: Set[rdflib.URIRef]
     concepts: Set[rdflib.URIRef]
+    unaccounted_concepts: Set[rdflib.URIRef]
+    concepts_only_in_collections: Set[rdflib.URIRef]
     broadest_concepts: Set[rdflib.URIRef]
     exclude_concepts: List[rdflib.URIRef]
     exclude_concept_schemes: List[rdflib.URIRef]
@@ -56,6 +64,10 @@ class VocabHarvester:
         self.concept_scheme_concepts = {}
         self.concept_maps = {}
         self.collection_maps = {}  # for mapping collections to parent collections
+        self.vann_prefix = None
+        self.vann_namespace = None
+        self.themes = []
+        self.keywords = []
         self.reset_filters()
 
     def reset_filters(self):
@@ -112,6 +124,10 @@ class VocabHarvester:
         else:
             root_node = rdflib.URIRef(root_node)
         self.root_node = root_node
+        self.themes = [rdflib.URIRef(t) for t in vocab_def.get("themes", [])]
+        self.kewords = vocab_def.get("keywords", [])
+        self.vann_prefix = vocab_def.get("vann_prefix", None)
+        self.vann_namespace = vocab_def.get("vann_namespace", None)
         exclude_concept_schemes = vocab_def.get("exclude_concept_schemes", [])
         exclude_collections = vocab_def.get("exclude_collections", [])
         exclude_concepts = vocab_def.get("exclude_concepts", [])
@@ -160,7 +176,7 @@ class VocabHarvester:
         self.concept_collections = set(await self.subjects(RDF.type, SKOS.Collection))
         for concept_collection in self.concept_collections:
             self.collection_members[concept_collection] = set()
-            self.collection_maps[concept_collection] = {'ancestors': set(), "defined_by": set()}
+            self.collection_maps[concept_collection] = {'parents': set(), "defined_by": set()} # only immediate parents
         self.concepts = set(await self.get_all_concepts())
         for concept in self.concepts:
             self.concept_maps[concept] = {'collections': set(), 'concept_schemes': set(), "defined_by": set()}
@@ -168,11 +184,12 @@ class VocabHarvester:
 
     async def identify_members(self):
         loop = asyncio.get_event_loop()
-        scheme_members_jobs = [loop.create_task(async_task_association(self.get_concept_scheme_members(s), s)) for s in
+        scheme_hierarchy_jobs = [loop.create_task(async_task_association(self.get_concept_scheme_hierarchy(s), s)) for s in
                                self.concept_schemes if isinstance(s, rdflib.URIRef)]
-
         await asyncio.sleep(0)  # yield loop to kick-start the jobs
-        for i in await asyncio.gather(*scheme_members_jobs, return_exceptions=True):
+        accounted_concepts = set()
+        all_concepts_in_schemes: Set = set()
+        for i in await asyncio.gather(*scheme_hierarchy_jobs, return_exceptions=True):
             if isinstance(i, Exception):
                 print(i)
                 continue
@@ -186,16 +203,39 @@ class VocabHarvester:
                 if top_c not in self.concept_maps:
                     print(f"Skipping unknown top-concept from this concept scheme: {top_c}")
                     continue
+                all_concepts_in_schemes.add(top_c)
+                accounted_concepts.add(top_c)
                 self.concept_maps[top_c]["concept_schemes"].add(s)
             for narrow_c in n:
                 if narrow_c not in self.concept_maps:
                     print(f"Skipping unknown narrower-concept from this concept scheme: {narrow_c}")
                     continue
+                all_concepts_in_schemes.add(narrow_c)
+                accounted_concepts.add(narrow_c)
                 self.concept_maps[narrow_c]["concept_schemes"].add(s)
-
-        collection_members_jobs = [loop.create_task(async_task_association(self.get_collection_members(c), c)) for c in
+        scheme_concept_jobs = [loop.create_task(async_task_association(self.get_concept_scheme_concepts(s), s)) for s in
+                                 self.concept_schemes if isinstance(s, rdflib.URIRef)]
+        await asyncio.sleep(0)  # yield loop to kick-start the jobs
+        for i in await asyncio.gather(*scheme_concept_jobs, return_exceptions=True):
+            if isinstance(i, Exception):
+                print(i)
+                continue
+            c, s = i
+            if s not in self.concept_scheme_concepts:
+                print(f"Skipping unknown concept scheme: {s}")
+                continue
+            self.concept_scheme_concepts[s].update(c)
+            for concept in c:
+                if concept not in self.concept_maps:
+                    print(f"Skipping unknown inScheme concept from this concept scheme: {concept}")
+                    continue
+                all_concepts_in_schemes.add(concept)
+                accounted_concepts.add(concept)
+                self.concept_maps[concept]["concept_schemes"].add(s)
+        collection_members_jobs = [loop.create_task(async_task_association(self.get_collection_immediate_members(c), c)) for c in
                                    self.concept_collections if isinstance(c, rdflib.URIRef)]
         await asyncio.sleep(0)  # yield loop to kick-start the jobs
+        all_concepts_in_collections: Set = set()
         for i in await asyncio.gather(*collection_members_jobs, return_exceptions=True):
             if isinstance(i, Exception):
                 print(i)
@@ -207,17 +247,61 @@ class VocabHarvester:
             self.collection_members[c].update(m)
             for memb in m:
                 if memb in self.collection_maps:
-                    self.collection_maps[memb]["ancestors"].add(c)
+                    self.collection_maps[memb]["parents"].add(c)
                 elif memb not in self.concept_maps:
                     print(f"Skipping unknown member from this concept collection: {memb}")
                     continue
                 else:
+                    accounted_concepts.add(memb)
+                    all_concepts_in_collections.add(memb)
                     self.concept_maps[memb]["collections"].add(c)
+
+        # these are concepts that appear in collections, but not in any concept scheme hierarchy
+        self.concepts_only_in_collections = all_concepts_in_collections.difference(all_concepts_in_schemes)
+
+        # these are concepts that are not in any collection or concept scheme. Ignore them?
+        self.unaccounted_concepts = set(c for c in self.concepts.difference(accounted_concepts) if not str(c).startswith(str(SKOS)))
+
+
+
+    def get_collection_collections(self, collection_uri, recurse=9) -> Set[rdflib.URIRef]:
+        # Return all collection descendants that are also collections
+        if collection_uri not in self.collection_members or len(self.collection_members[collection_uri]) == 0:
+            return set()
+        if recurse == 0:
+            print("Recursion limit reached when finding collections of collections")
+            return set()
+        ret_set = set()
+        for member in self.collection_members[collection_uri]:
+            # Is member a collection?
+            if member in self.collection_members:
+                ret_set.add(member)
+                # Recurse
+                ret_set.update(self.get_collection_collections(member, recurse=recurse-1))
+        return ret_set
+
+    def get_collection_ancestors(self, collection_uri, recurse=9) -> Set[rdflib.URIRef]:
+        # Return all collection ancestors that are also collections
+        if collection_uri not in self.collection_maps or len(self.collection_maps[collection_uri]) == 0:
+            return set()
+        if recurse == 0:
+            print("Recursion limit reached when finding parents of collection")
+            return set()
+        ret_set = set()
+        parents = self.collection_maps[collection_uri]["parents"]
+        for parent in parents:
+            # Is member a collection?
+            if parent in self.collection_members or parent in self.collection_maps:
+                ret_set.add(parent)
+                # Recurse
+                ret_set.update(self.get_collection_ancestors(parent, recurse=recurse-1))
+        return ret_set
 
     def _filter_exclude_collections(self) -> Set[rdflib.URIRef]:
         extra_exclude_collections = set()
         more_extras = set()
-        for _ in range(3):  # loop 3 times, to get 4-levels-deep collections-in-collections
+        for _ in range(9):  # loop 9 times, to get 10-levels-deep collections-in-collections
+            recheck = 0
             for e in chain(self.exclude_concept_collections, extra_exclude_collections):
                 # First check for nested collections in the members of collections to be removed
                 if e not in self.collection_members:
@@ -228,16 +312,24 @@ class VocabHarvester:
                 members_to_check = self.collection_members[e]
                 for member in members_to_check:
                     if member in self.collection_maps:
+                        if member in self.exclude_concept_collections or \
+                                member in extra_exclude_collections or \
+                                member in more_extras:
+                            continue
                         # member of a collection to remove is another collection, process these first
-                        parents = self.collection_maps[member]["parentplus"]
+                        parents = self.collection_maps[member]["parents"]  # immediate parents
                         if all((p in self.exclude_concept_collections or p in extra_exclude_collections or p in more_extras)
                                for p in parents):
                             more_extras.add(member)
                         else:
                             print("Found a collection member of a collection that cannot be excluded?")
                             print(member)
+                            recheck += 1
+
             extra_exclude_collections.update(more_extras)
             more_extras.clear()
+            if recheck == 0:
+                break
         concepts_to_exclude = set()
         for e in chain(self.exclude_concept_collections, extra_exclude_collections):
             # Now check for concepts that are in these collections
@@ -287,29 +379,27 @@ class VocabHarvester:
 
     def _filter_include_collections(self) -> Set[rdflib.URIRef]:
         extra_include_collections = set()
-        more_extras = set()
-        for _ in range(3):  # loop 3 times, to get 4-levels-deep collections-in-collections
-            for e in chain(self.include_concept_collections, extra_include_collections):
-                # First check for nested collections in the members of collections to be whitelisted
-                if e not in self.collection_members:
-                    continue
-                # already filtered out?
-                if (e not in self.filtered_collections) or (e not in self.filtered_collection_members):
-                    continue
-                members_to_check = self.collection_members[e]
-                for member in members_to_check:
-                    if member in self.collection_maps:
-                        # member of a collection to whitelist is another collection, do these first
-                        parents = self.collection_maps[member]["ancestors"]
-                        if any((p in self.include_concept_collections or p in extra_include_collections or p in more_extras)
-                               for p in parents):
-                            more_extras.add(member)
-            extra_include_collections.update(more_extras)
-            more_extras.clear()
+
+        for e in self.include_concept_collections:
+            # First check for nested collections in the members of collections to be whitelisted
+
+            if e not in self.collection_members or len(self.collection_members[e]) == 0:
+                # concept has zero members, skip it
+                continue
+            # already filtered out?
+            if (e not in self.filtered_collections) or (e not in self.filtered_collection_members):
+                continue
+            members_to_check = self.collection_members[e]
+            for member in members_to_check:
+                if member in self.collection_maps:
+                    extra_include_collections.add(member)
+                    extra_include_collections.update(self.get_collection_collections(member))
+
         concepts_to_include = set()
         for e in chain(self.include_concept_collections, extra_include_collections):
             # Now check for concepts that are in these collections
-            if e not in self.collection_members:
+            if e not in self.collection_members or len(self.collection_members[e]) == 0:
+                # concept has zero members, skip it
                 continue
             # already filtered out?
             if (e not in self.filtered_collections) or (e not in self.filtered_collection_members):
@@ -385,7 +475,7 @@ class VocabHarvester:
         # find concept collections to remove where all members were removed by excluded schemes
         collections_to_delete = set()
         for c in self.filtered_collections:
-            if not any(m in self.filtered_concepts for m in self.filtered_collection_members[c]):
+            if not any((m in self.filtered_concepts or m in self.filtered_collections) for m in self.filtered_collection_members[c]):
                 del self.filtered_collection_members[c]
                 del self.filtered_collection_maps[c]
                 collections_to_delete.add(c)
@@ -431,11 +521,24 @@ class VocabHarvester:
 
             new_scheme_vocab_details = [vocab_graph_detail]
         else:
-            new_scheme_vocab_details = []
-            # Just find all concept schemes
-            for scheme in self.filtered_concept_schemes:
-                vocab_graph_detail = await self.harvest_from_concept_scheme(scheme)
-                new_scheme_vocab_details.append(vocab_graph_detail)
+            new_scheme_vocab_details = await self.harvest_from_all_known_schemes()
+        return new_scheme_vocab_details
+
+    async def harvest_from_all_known_schemes(self) -> List[VocabGraphDetails]:
+        new_scheme_vocab_details = []
+        #Just find all concept schemes
+        for scheme in self.filtered_concept_schemes:
+            vocab_graph_detail = await self.harvest_from_concept_scheme(scheme)
+            new_scheme_vocab_details.append(vocab_graph_detail)
+        if len(self.concepts_only_in_collections) > 0:
+            g = make_voc_graph()
+            voc_uri = rdflib.URIRef(f"urn:vocpub:collections")
+            g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
+            g.add((voc_uri, DCTERMS.title, rdflib.Literal("Collections")))
+            g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Collections")))
+            g.add((voc_uri, SKOS.note, rdflib.Literal("Concepts that are only members of collections, and no other ConceptSchemes")))
+            collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, "collections", in_scheme=False)
+            new_scheme_vocab_details.append(collection_vocab_detail)
         return new_scheme_vocab_details
 
     async def harvest_from_ontology_vocab(self) -> List[VocabGraphDetails]:
@@ -535,8 +638,22 @@ class VocabHarvester:
         if scheme_graph is None or len(scheme_graph) < 1:
             raise RuntimeError(f"Cannot get CBD for ConceptScheme: {scheme_uri}")
         token = self.extract_label_from_cbd(scheme_uri, scheme_graph, tokenize=True)
-        print(token)
         self.clean_scheme(scheme_uri, scheme_graph)
+        print("Harvesting for vocab: " + token)
+        existing_vann_prefixes = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespacePrefix))
+        existing_vann_namespaces = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespaceUri))
+        has_vann = len(existing_vann_prefixes) > 0 or len(existing_vann_namespaces) > 0
+        if not has_vann and self.vann_prefix is not None and self.vann_namespace is not None:
+            scheme_graph.add((scheme_uri, VANN.preferredNamespacePrefix, rdflib.Literal(self.vann_prefix)))
+            scheme_graph.add((scheme_uri, VANN.preferredNamespaceUri, rdflib.Literal(self.vann_namespace, datatype=XSD.anyURI)))
+        return await self.harvest_concepts_into_vocab_graph(scheme_uri, concepts, scheme_graph, token)
+
+    async def harvest_concepts_into_vocab_graph(self, scheme_uri: rdflib.URIRef, concepts: Set[rdflib.URIRef], vocab_graph: rdflib.Graph, token: str, in_scheme: bool = True) -> VocabGraphDetails:
+        kw_map = get_value("extra_keywords_mappings", {})
+        sch_extra_keywords: List[str] = kw_map.get(str(scheme_uri), [])
+        theme_map = get_value("extra_themes_mappings", {})
+        sch_extra_themes: List[rdflib.URIRef] = [rdflib.URIRef(t) for t in theme_map.get(str(scheme_uri), [])]
+
         top_concepts: Set = concepts.intersection(self.broadest_concepts)
         loop = asyncio.get_event_loop()
         jobs = [loop.create_task(async_task_association(self.cbd(c), c)) for c in concepts]
@@ -549,14 +666,13 @@ class VocabHarvester:
             g, c = d
             self.clean_concept(c, g)
             for t in g.triples((None, None, None)):
-                scheme_graph.add(t)
+                vocab_graph.add(t)
 
         # collections with concepts that are in this scheme
-        applicable_collections = set(c for c in self.filtered_collections if any(m in concepts for m in self.filtered_collection_members[c]))
-
-        # collections with members that are collections with members in this scheme
-        more_applicable_collections = set(c for c in self.filtered_collections if any(m in applicable_collections for m in self.filtered_collection_members[c]))
-        applicable_collections.update(more_applicable_collections)
+        immediate_applicable_collections = set(c for c in self.filtered_collections if any(m in concepts for m in self.filtered_collection_members[c]))
+        applicable_collections = set().union(immediate_applicable_collections)
+        for im in immediate_applicable_collections:
+            applicable_collections.update(self.get_collection_ancestors(im))
         jobs = [loop.create_task(async_task_association(self.cbd(c), c)) for c in applicable_collections]
         await asyncio.sleep(0)  # Yield asyncio to kick-start jobs
         done_jobs = await asyncio.gather(*jobs, return_exceptions=True)
@@ -564,25 +680,40 @@ class VocabHarvester:
             if isinstance(d, Exception):
                 print(d)
                 continue
+            # Got applicable SKOS:Collection CBDs.
             g, c = d
             self.clean_collection(c, g)
             for t in g.triples((None, None, None)):
-                scheme_graph.add(t)
+                vocab_graph.add(t)
         for c in applicable_collections:
-            scheme_graph.add((c, SKOS.inScheme, scheme_uri))
+            if in_scheme:
+                vocab_graph.add((c, SKOS.inScheme, scheme_uri))
+            if c not in self.filtered_collection_members:
+                raise RuntimeError(f"Collection {c} is not in filtered_collection_members, did it get filtered out?")
             members: Set = self.filtered_collection_members[c]
             for m in concepts.intersection(members):
-                scheme_graph.add((c, SKOS.member, m))  # Concept m is member of Collection c
+                vocab_graph.add((c, SKOS.member, m))  # Concept m is member of Collection c
             for m in applicable_collections.intersection(members):
-                scheme_graph.add((c, SKOS.member, m))  # Collection m is member of Collection c
+                vocab_graph.add((c, SKOS.member, m))  # Collection m is member of Collection c
+            c_keywords: List[str] = kw_map.get(str(c), [])
+            if len(c_keywords) > 0:
+                vocab_graph.add((c, SDO.keywords, rdflib.Literal(", ".join(c_keywords))))
+            c_themes: List[rdflib.URIRef] = [rdflib.URIRef(t) for t in theme_map.get(str(c), [])]
+            for t in c_themes:
+                vocab_graph.add((c, DCAT.theme, rdflib.URIRef(t)))
         for t in top_concepts:
-            scheme_graph.add((scheme_uri, SKOS.hasTopConcept, t))
-            scheme_graph.add((t, SKOS.topConceptOf, scheme_uri))
-        for c in concepts:
-            scheme_graph.add((c, SKOS.inScheme, scheme_uri))
-        return VocabGraphDetails(graph=scheme_graph,
-                                 keywords=[],
-                                 themes=[],
+            vocab_graph.add((scheme_uri, SKOS.hasTopConcept, t))
+            vocab_graph.add((t, SKOS.topConceptOf, scheme_uri))
+        if in_scheme:
+            for c in concepts:
+                vocab_graph.add((c, SKOS.inScheme, scheme_uri))
+        all_keywords = self.keywords.copy()
+        all_keywords.extend(sch_extra_keywords)
+        all_themes = self.themes.copy()
+        all_themes.extend(sch_extra_themes)
+        return VocabGraphDetails(graph=vocab_graph,
+                                 keywords=all_keywords,
+                                 themes=all_themes,
                                  token=token,
                                  vocab_uri=scheme_uri)
 
@@ -605,10 +736,16 @@ class VocabHarvester:
     async def get_all_concepts(self) -> Set[rdflib.URIRef]:
         raise NotImplementedError()
 
-    async def get_concept_scheme_members(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
+    async def get_concept_scheme_hierarchy(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
         raise NotImplementedError()
 
-    async def get_collection_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+    async def get_concept_scheme_concepts(self, s: rdflib.URIRef) -> Set[Identifier]:
+        raise NotImplementedError()
+
+    async def get_collection_all_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+        raise NotImplementedError()
+
+    async def get_collection_immediate_members(self, c: rdflib.URIRef) -> Set[Identifier]:
         raise NotImplementedError()
 
 
@@ -631,11 +768,17 @@ class SPARQLVocabHarvester(VocabHarvester):
     async def get_all_concepts(self) -> Set[rdflib.URIRef]:
         return await sparql_all_concepts(self.source_graph)
 
-    async def get_concept_scheme_members(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
-        return await sparql_concept_scheme_members(self.source_graph, s)
+    async def get_concept_scheme_hierarchy(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
+        return await sparql_concept_scheme_hierarchy(self.source_graph, s)
 
-    async def get_collection_members(self, c: rdflib.URIRef) -> Set[Identifier]:
-        return await sparql_collection_members(self.source_graph, c)
+    async def get_concept_scheme_concepts(self, s: rdflib.URIRef) -> Set[Identifier]:
+        return await sparql_concept_scheme_concepts(self.source_graph, s)
+
+    async def get_collection_all_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+        return await sparql_collection_all_members(self.source_graph, c)
+
+    async def get_collection_immediate_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+        return await sparql_collection_immediate_members(self.source_graph, c)
 
 class LocalVocabHarvester(VocabHarvester):
     def __init__(self, source_graph: rdflib.Graph):
@@ -656,11 +799,17 @@ class LocalVocabHarvester(VocabHarvester):
     async def get_all_concepts(self) -> Set[rdflib.URIRef]:
         return get_all_concepts(self.source_graph)
 
-    async def get_concept_scheme_members(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
-        return get_concept_scheme_members(self.source_graph, s)
+    async def get_concept_scheme_hierarchy(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
+        return get_concept_scheme_hierarchy(self.source_graph, s)
 
-    async def get_collection_members(self, c: rdflib.URIRef) -> Set[Identifier]:
-        return get_collection_members(self.source_graph, c)
+    async def get_concept_scheme_concepts(self, s: rdflib.URIRef) -> Set[Identifier]:
+        return get_concept_scheme_concepts(self.source_graph, s)
+
+    async def get_collection_all_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+        return get_collection_all_members(self.source_graph, c)
+
+    async def get_collection_immediate_members(self, c: rdflib.URIRef) -> Set[Identifier]:
+        return get_collection_immediate_members(self.source_graph, c)
 
 
 def check_type(graph: rdflib.Graph, root_node: rdflib.URIRef) -> rdflib.URIRef:

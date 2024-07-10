@@ -1,7 +1,7 @@
 from typing import Set, Tuple
 
 import rdflib
-from rdflib import SKOS
+from rdflib import SKOS, RDF
 from rdflib.term import Identifier
 
 from src.voc_graph import TERN
@@ -14,18 +14,22 @@ def get_all_concepts(
     PREFIX skos: <{str(SKOS)}>
     SELECT DISTINCT ?c WHERE
     {{
+      {{ ?c rdf:type skos:Concept }} UNION
       {{
-        ?c rdf:type skos:Concept
+        {{ ?a skos:hasTopConcept ?c }} UNION {{ ?c skos:topConceptOf ?b }}
       }} UNION {{
         {{
-          {{ ?a skos:hasTopConcept ?c }} UNION {{ ?c skos:topConceptOf ?b }}
+          {{ ?d skos:narrower ?c }} UNION {{ ?e skos:broader ?c }}
         }} UNION {{
-          {{
-            {{ ?d skos:narrower ?c }} UNION {{ ?e skos:broader ?c }}
-          }} UNION {{
-            {{ ?c skos:narrower ?f }} UNION {{ ?c skos:broader ?g }}
-          }}
+          {{ ?c skos:narrower ?f }} UNION {{ ?c skos:broader ?g }}
         }}
+      }} UNION {{
+        ?c skos:inScheme ?s
+      }} UNION {{
+        ?c skos:definition ?h
+      }}
+      FILTER NOT EXISTS {{
+        {{ ?c rdf:type skos:Collection }} UNION {{ ?c rdf:type skos:OrderedCollection }} UNION {{ ?c rdf:type skos:ConceptScheme }}
       }}
     }}\
     '''
@@ -62,7 +66,7 @@ def get_broadest_concepts(
     return set(r['c'] for r in sparql_res)
 
 
-def get_concept_scheme_members(
+def get_concept_scheme_hierarchy(
     graph: rdflib.Graph,
     s: rdflib.URIRef,
 ) -> Tuple[Set[Identifier], Set[Identifier]]:
@@ -86,7 +90,46 @@ def get_concept_scheme_members(
     return (tops, narrowers)
 
 
-def get_collection_members(
+def get_concept_scheme_concepts(
+    graph: rdflib.Graph,
+    s: rdflib.URIRef,
+) -> Set[Identifier]:
+    sparql = f'''\
+    PREFIX skos: <{str(SKOS)}>
+    SELECT DISTINCT ?c WHERE
+    {{ BIND (<{s}> as ?s).
+      {{ ?c skos:inScheme ?s }}
+    }}\
+    '''
+    sparql_res = graph.query(sparql, initNs={})
+    if len(sparql_res) < 1:
+        return set()
+    concepts = set()
+    for r in sparql_res:
+        concepts.add(r['c'])
+    return concepts
+
+
+def get_collection_immediate_members(
+    graph: rdflib.Graph,
+    c: rdflib.URIRef
+) -> Set[Identifier]:
+    sparql = f'''\
+    PREFIX skos: <{str(SKOS)}>
+    PREFIX tern: <{str(TERN)}>
+    SELECT DISTINCT ?m WHERE
+    {{ BIND (<{c}> as ?c).
+      {{ {{ ?c skos:member ?m }} UNION {{ ?m tern:isMemberOf ?c }} }} UNION {{ ?m tern:hasCategoricalCollection ?c }}
+    }}\
+    '''
+    sparql_res = graph.query(sparql, initNs={})
+    if len(sparql_res) < 1:
+        return set()
+
+    return set(r['m'] for r in sparql_res)
+
+
+def get_collection_all_members(
     graph: rdflib.Graph,
     c: rdflib.URIRef
 ) -> Set[Identifier]:
@@ -103,4 +146,3 @@ def get_collection_members(
         return set()
 
     return set(r['m'] for r in sparql_res)
-

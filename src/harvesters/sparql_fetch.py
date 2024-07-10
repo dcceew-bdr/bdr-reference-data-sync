@@ -26,6 +26,7 @@ def get_httpx_client() -> httpx.AsyncClient:
     return client
 get_httpx_client.cache = threading.local()
 
+
 async def sparql_describe(
     graph: rdflib.Graph,
     identifier: rdflib.URIRef,
@@ -68,6 +69,7 @@ async def remote_sparql(graph: rdflib.Graph, query, client: Union[httpx.AsyncCli
         raise RuntimeError("Cannot parse SPARQL response from remote query.")
     return jsonresults.JSONResult(content_dict)
 
+
 async def sparql_subjects(
     graph: rdflib.Graph,
     p: rdflib.URIRef,
@@ -98,7 +100,8 @@ async def sparql_objects(
         return []
     return [r['o'] for r in sparql_res]
 
-async def sparql_concept_scheme_members(
+
+async def sparql_concept_scheme_hierarchy(
     graph: rdflib.Graph,
     s: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
@@ -124,7 +127,31 @@ async def sparql_concept_scheme_members(
             narrowers.add(r['n'])
     return (tops, narrowers)
 
-async def sparql_collection_members(
+
+async def sparql_concept_scheme_concepts(
+    graph: rdflib.Graph,
+    s: rdflib.URIRef,
+    client: Union[httpx.AsyncClient, None] = None,
+    explicit: bool = True,
+) -> Set[Identifier]:
+    explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
+    sparql = f'''\
+    PREFIX skos: <{str(SKOS)}>
+    SELECT DISTINCT ?c {explicit_clause} WHERE
+    {{ BIND (<{s}> as ?s).
+      {{ ?c skos:inScheme ?s }}
+    }}\
+    '''
+    sparql_res = await remote_sparql(graph, sparql, client=client)
+    if len(sparql_res) < 1:
+        return set()
+    concepts = set()
+    for r in sparql_res:
+        concepts.add(r['c'])
+    return concepts
+
+
+async def sparql_collection_all_members(
     graph: rdflib.Graph,
     c: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
@@ -146,6 +173,28 @@ async def sparql_collection_members(
     return set(r['m'] for r in sparql_res)
 
 
+async def sparql_collection_immediate_members(
+    graph: rdflib.Graph,
+    c: rdflib.URIRef,
+    client: Union[httpx.AsyncClient, None] = None,
+    explicit: bool = True,
+) -> Set[Identifier]:
+    explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
+    sparql = f'''\
+    PREFIX skos: <{str(SKOS)}>
+    PREFIX tern: <{str(TERN)}>
+    SELECT DISTINCT ?m {explicit_clause} WHERE
+    {{ BIND (<{c}> as ?c).
+      {{ {{ ?c skos:member ?m }} UNION {{ ?m tern:isMemberOf ?c }} }} UNION {{ ?m tern:hasCategoricalCollection ?c }}
+    }}\
+    '''
+    sparql_res = await remote_sparql(graph, sparql, client=client)
+    if len(sparql_res) < 1:
+        return set()
+
+    return set(r['m'] for r in sparql_res)
+
+
 async def sparql_all_concepts(
     graph: rdflib.Graph,
     client: Union[httpx.AsyncClient, None] = None,
@@ -156,18 +205,22 @@ async def sparql_all_concepts(
     PREFIX skos: <{str(SKOS)}>
     SELECT DISTINCT ?c {explicit_clause} WHERE
     {{
+      {{ ?c rdf:type skos:Concept }} UNION
       {{
-        ?c rdf:type skos:Concept
+        {{ ?a skos:hasTopConcept ?c }} UNION {{ ?c skos:topConceptOf ?b }}
       }} UNION {{
         {{
-          {{ ?a skos:hasTopConcept ?c }} UNION {{ ?c skos:topConceptOf ?b }}
+          {{ ?d skos:narrower ?c }} UNION {{ ?e skos:broader ?c }}
         }} UNION {{
-          {{
-            {{ ?d skos:narrower ?c }} UNION {{ ?e skos:broader ?c }}
-          }} UNION {{
-            {{ ?c skos:narrower ?f }} UNION {{ ?c skos:broader ?g }}
-          }}
+          {{ ?c skos:narrower ?f }} UNION {{ ?c skos:broader ?g }}
         }}
+      }} UNION {{
+        ?c skos:inScheme ?s
+      }} UNION {{
+        ?c skos:definition ?h
+      }}
+      FILTER NOT EXISTS {{
+        {{ ?c rdf:type skos:Collection }} UNION {{ ?c rdf:type skos:OrderedCollection }} UNION {{ ?c rdf:type skos:ConceptScheme }}
       }}
     }}\
     '''
