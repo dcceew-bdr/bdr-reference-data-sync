@@ -308,3 +308,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+generated/*.zip
+generated/*/*
+!generated/.gitkeep
+# Just _all_ of IDEA
+.idea/
