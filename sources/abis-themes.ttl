@@ -7,6 +7,7 @@ cs: a skos:ConceptScheme ;
     skos:hasTopConcept :feature-types ;
     skos:hasTopConcept :sampling-types ;
     skos:hasTopConcept :data-roles ;
+    skos:hasTopConcept :datatypes ;
     skos:hasTopConcept :procedures ;
     skos:hasTopConcept :observation-types ;
     skos:hasTopConcept :observable-properties ;
@@ -16,6 +17,12 @@ cs: a skos:ConceptScheme ;
 :data-roles a skos:Concept ;
     skos:prefLabel "ABIS Vocab Theme: Data Roles";
     skos:definition "Vocabularies with the dcat:theme abis/data-themes:data-roles can be used for prov role attributions on ABIS Datasets."@en;
+    skos:topConceptOf cs: ;
+    .
+
+:datatypes a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Data Types";
+    skos:definition "Vocabularies with the dcat:theme abis/data-themes:datatypes can be used for Literal Datatypes in ABIS Datasets."@en;
     skos:topConceptOf cs: ;
     .
 
