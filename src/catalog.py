@@ -8,7 +8,7 @@ from .voc_graph import make_voc_graph, VocabGraphDetails
 
 
 
-bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalog/", datatype=XSD.anyURI)
+bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogs/", datatype=XSD.anyURI)
 
 async def build_catalog(catalog_def: Dict[str, Any]) -> rdflib.Graph:
     try:
@@ -25,7 +25,7 @@ async def build_catalog(catalog_def: Dict[str, Any]) -> rdflib.Graph:
     cat_path = Path(".") / "generated" / cat_token
     cat_path.mkdir(exist_ok=True, parents=True)
     cat_graph = make_voc_graph()
-    cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalog/{cat_token}")
+    cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogs/{cat_token}")
     cat_graph.add((cat_uri, RDF.type, DCAT.Catalog))
     cat_graph.add((cat_uri, VANN.preferredNamespacePrefix, rdflib.Literal("bdr-cat")))
     cat_graph.add((cat_uri, VANN.preferredNamespaceUri, bdr_cat_ns))
