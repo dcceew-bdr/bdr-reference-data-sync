@@ -3,8 +3,6 @@ if __name__ == '__main__':
     print("Run with python main.py or python -m src")
     sys.exit(1)
 
-from typing import Dict, Any
-import rdflib
 from . import config
 from .catalog import build_catalog
 

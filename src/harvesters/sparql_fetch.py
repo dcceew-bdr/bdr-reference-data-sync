@@ -85,7 +85,6 @@ async def sparql_subjects(
     return [r['s'] for r in sparql_res]
 
 
-
 async def sparql_objects(
     graph: rdflib.Graph,
     s: rdflib.URIRef,
