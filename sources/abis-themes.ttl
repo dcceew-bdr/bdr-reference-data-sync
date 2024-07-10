@@ -9,6 +9,7 @@ cs: a skos:ConceptScheme ;
     skos:hasTopConcept :data-roles ;
     skos:hasTopConcept :procedures ;
     skos:hasTopConcept :observation-types ;
+    skos:hasTopConcept :observable-properties ;
     skos:prefLabel "ABIS Themed-Vocabulary Themes"@en;
     .
 
@@ -39,5 +40,11 @@ cs: a skos:ConceptScheme ;
 :procedures a skos:Concept ;
     skos:prefLabel "ABIS Vocab Theme: Procedures";
     skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
+    skos:topConceptOf cs: ;
+    .
+
+:observable-properties a skos:Concept ;
+    skos:prefLabel "ABIS Vocab Theme: Observable Properties";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observable-properties can be used where concepts go in observableProperty on a sosa:FeatureOfInterest or observedProperty on sosa:Observation."@en;
     skos:topConceptOf cs: ;
     .
