@@ -3,9 +3,10 @@ from typing import List
 import rdflib
 from dataclasses import dataclass
 
-from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA
+from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA, SDO
 TERN = rdflib.Namespace("https://w3id.org/tern/ontologies/tern/")
-
+ABIS = rdflib.Namespace("https://linked.data.gov.au/def/abis/")
+BDR = rdflib.Namespace("https://linked.data.gov.au/dataset/bdr/")
 
 @dataclass
 class VocabGraphDetails:
@@ -25,4 +26,7 @@ def make_voc_graph():
     ns.bind("dcat", DCAT)
     ns.bind("dcterms", DCTERMS)
     ns.bind("vann", VANN)
+    ns.bind("schema", SDO)
+    ns.bind("abis", ABIS)
+    ns.bind("bdr", BDR)
     return g
