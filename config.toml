@@ -49,7 +49,7 @@ include_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
 [[catalogs]]
 token = "abis"
 label = "ABIS Vocabularies"
-source = ""  # No Source, each ABIS Vocabulary has its owl file
+source = ""  # No Catalog-level source, each ABIS Vocabulary has its own source file
 
 [[catalogs.vocabularies]] # ABIS Vocab Themes vocabulary.
 name = "abis-themes"
@@ -78,6 +78,40 @@ root_node = "https://linked.data.gov.au/def/data-roles" # Concept Scheme
 source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
 
 
+## BDR Vocabularies and Registers
+[[catalogs]]
+token = "bdr-cv"
+label = "BDR Vocabularies and Registers"
+source = ""  # No Source, each BDR Vocab/Register has its own source file
+
+[[catalogs.vocabularies]] # BDR Observable Properties Register (Vocab)
+name = "bdr-observable-properties"
+keywords = ["properties", "observable properties", "obsprops", "bdr"]
+themes = ["https://linked.data.gov.au/def/abis/vocab-themes/observable-properties"]
+vann_prefix = "bdr-obsprops"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/obsprops/"
+root_node = "https://linked.data.gov.au/dataset/bdr/obsprops" # Concept Scheme
+source = "file://./sources/bdr-vocabs/vocabs/observable-properties.ttl"
+
+[[catalogs.vocabularies]] # BDR Data Types Register (Vocab)
+name = "bdr-datatypes"
+keywords = ["data", "datatype", "types", "bdr"]
+themes = ["https://linked.data.gov.au/def/abis/vocab-themes/datatypes"]
+vann_prefix = "bdr-datatypes"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/datatypes/"
+root_node = "https://linked.data.gov.au/dataset/bdr/datatypes" # Concept Scheme
+source = "file://./sources/bdr-vocabs/vocabs/datatypes.ttl"
+
+[[catalogs.vocabularies]] # BDR Submitting Organisations Register (Vocab)
+name = "bdr-orgs"
+keywords = ["submitting", "organisations", "organizations", "orgs", "bdr"]
+themes = []
+vann_prefix = "bdr-orgs"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/orgs/"
+root_node = "https://linked.data.gov.au/dataset/bdr/orgs" # Concept Scheme
+source = "file://./sources/bdr-vocabs/vocabs/submitting-organisations.ttl"
+
+
 [extra_keywords_mappings]
 # Manually map ConceptScheme IDs or Collection IDs to extra keywords
 "http://linked.data.gov.au/def/tern-cv/dd085299-ae86-4371-ae15-61dfa432f924" = ["attributes"]  # Attributes ConceptScheme
@@ -86,5 +120,5 @@ source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
 "http://linked.data.gov.au/def/tern-cv/68af3d25-c801-4089-afff-cf701e2bd61d" = ["feature", "type"] # Feature Type ConceptScheme
 
 [extra_themes_mappings]
-# Manually map ConceptScheme IDs to extra ABIS Vocab themes
+# Manually map ConceptScheme IDs to extra ABIS Vocab-Themes
 "http://linked.data.gov.au/def/tern-cv/68af3d25-c801-4089-afff-cf701e2bd61d" = ["https://linked.data.gov.au/def/abis/vocab-themes/feature-types"]
