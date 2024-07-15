@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA, SDO
 TERN = rdflib.Namespace("https://w3id.org/tern/ontologies/tern/")
 ABIS = rdflib.Namespace("https://linked.data.gov.au/def/abis/")
-BDR = rdflib.Namespace("https://linked.data.gov.au/dataset/bdr/")
+BDRDS = rdflib.Namespace("https://linked.data.gov.au/dataset/bdr/")
 
 
 @dataclass
@@ -37,7 +37,7 @@ def make_voc_graph(multigraph: bool = False):
     ns.bind("vann", VANN)
     ns.bind("schema", SDO)
     ns.bind("abis", ABIS)
-    ns.bind("bdr", BDR)
+    ns.bind("bdr-ds", BDRDS)
     if multigraph:
         ds = rdflib.Dataset(store=g.store)
         ds.namespace_manager = ns
