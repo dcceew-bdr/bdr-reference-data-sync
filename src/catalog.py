@@ -45,6 +45,19 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         harvester.load_def(vocab_def)
         these_vocab_graphs_details: List[VocabGraphDetails] = await harvester.run_procedures()
         vocab_graph_details.extend(these_vocab_graphs_details)
+    namespaces = catalog_def.get("namespaces", [])
+    for namespace_def in namespaces:
+        namespace_name = str(namespace_def.get("name", "unnamed"))
+        namespace_vann_prefix = str(namespace_def.get("vann_prefix", ""))
+        namespace_vann_namespace = str(namespace_def.get("vann_namespace", ""))
+        if len(namespace_vann_prefix) == 0 or len(namespace_vann_namespace) == 0:
+            raise RuntimeError(f"Namespace {namespace_name} is missing a vann_prefix or vann_namespace")
+        str(namespace_vann_namespace)
+        ns_def_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/ns/{namespace_name}")
+        cat_graph.add((ns_def_uri, VANN.preferredNamespacePrefix, rdflib.Literal(namespace_vann_prefix)))
+        cat_graph.add((ns_def_uri, VANN.preferredNamespaceUri, rdflib.Literal(namespace_vann_namespace, datatype=XSD.anyURI)))
+        cat_graph.add((cat_uri, DCTERMS.hasPart, ns_def_uri))
+        cat_graph.add((ns_def_uri, DCTERMS.isPartOf, cat_uri))
     cat_details = CatalogGraphDetails(
         graph=cat_graph, token=cat_token, cat_uri=cat_uri, content_graphs=vocab_graph_details)
     for vocab_graph_detail in vocab_graph_details:
@@ -64,6 +77,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
             out_file = out_dir / f"{vocab_graph_detail.token}.ttl"
             with open(out_file, "wb") as f:
                 vocab_graph_detail.graph.serialize(f, format="turtle")
+
     if serialize:
         cat_file = cat_path / "catalog.ttl"
         with open(cat_file, "wb") as f:

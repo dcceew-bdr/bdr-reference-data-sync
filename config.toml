@@ -111,6 +111,12 @@ vann_namespace = "https://linked.data.gov.au/dataset/bdr/orgs/"
 root_node = "https://linked.data.gov.au/dataset/bdr/orgs" # Concept Scheme
 source = "file://./sources/bdr-vocabs/vocabs/submitting-organisations.ttl"
 
+[[catalogs.namespaces]]
+# top-level BDR-Dataset namespace
+name = "bdr-ds"
+vann_prefix = "bdr-ds"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
+
 
 [extra_keywords_mappings]
 # Manually map ConceptScheme IDs or Collection IDs to extra keywords

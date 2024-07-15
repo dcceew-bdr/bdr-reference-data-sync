@@ -26,8 +26,9 @@ async def build_catalogs():
         for content_graph in cat_details.content_graphs:
             for (s, p, o) in content_graph.graph:
                 cat_ds.add((s, p, o, cat_uri))
-        with open(f"./generated/{catalog_def['token']}/all.nq", "wb") as f:
+        with open(f"./generated/{catalog_def['token']}_all.nq", "wb") as f:
             cat_ds.serialize(f, format="nquads")
+
 
 def entrypoint() -> int:
     import asyncio
