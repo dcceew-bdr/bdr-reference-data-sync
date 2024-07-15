@@ -4,13 +4,11 @@ from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO, DCTERMS
 from rdflib.plugins.stores import sparqlstore
 from pathlib import Path
 from .harvesters import VocabHarvester
-from .voc_graph import make_voc_graph, VocabGraphDetails
-
-
+from .voc_graph import make_voc_graph, VocabGraphDetails, CatalogGraphDetails
 
 bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogs/", datatype=XSD.anyURI)
 
-async def build_catalog(catalog_def: Dict[str, Any]) -> rdflib.Graph:
+async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogGraphDetails:
     try:
         cat_source = catalog_def["source"]
     except LookupError:
@@ -47,12 +45,9 @@ async def build_catalog(catalog_def: Dict[str, Any]) -> rdflib.Graph:
         harvester.load_def(vocab_def)
         these_vocab_graphs_details: List[VocabGraphDetails] = await harvester.run_procedures()
         vocab_graph_details.extend(these_vocab_graphs_details)
+    cat_details = CatalogGraphDetails(
+        graph=cat_graph, token=cat_token, cat_uri=cat_uri, content_graphs=vocab_graph_details)
     for vocab_graph_detail in vocab_graph_details:
-        out_dir = cat_path / "vocabularies"
-        out_dir.mkdir(exist_ok=True, parents=True)
-        out_file = out_dir / f"{vocab_graph_detail.token}.ttl"
-        with open(out_file, "wb") as f:
-            vocab_graph_detail.graph.serialize(f, format="turtle")
         vocab_uri = vocab_graph_detail.vocab_uri
         cat_graph.add((vocab_uri, RDF.type, DCAT.Dataset))
         keywords: List[str] = vocab_graph_detail.keywords
@@ -63,6 +58,16 @@ async def build_catalog(catalog_def: Dict[str, Any]) -> rdflib.Graph:
             cat_graph.add((vocab_uri, DCAT.theme, rdflib.URIRef(t)))
         cat_graph.add((cat_uri, DCTERMS.hasPart, vocab_uri))
         cat_graph.add((vocab_uri, DCTERMS.isPartOf, cat_uri))
-    cat_file = cat_path / "catalog.ttl"
-    with open(cat_file, "wb") as f:
-        cat_graph.serialize(f, format="turtle")
+        if serialize:
+            out_dir = cat_path / "vocabularies"
+            out_dir.mkdir(exist_ok=True, parents=True)
+            out_file = out_dir / f"{vocab_graph_detail.token}.ttl"
+            with open(out_file, "wb") as f:
+                vocab_graph_detail.graph.serialize(f, format="turtle")
+    if serialize:
+        cat_file = cat_path / "catalog.ttl"
+        with open(cat_file, "wb") as f:
+            cat_graph.serialize(f, format="turtle")
+    return cat_details
+
+
