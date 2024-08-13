@@ -28,6 +28,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     cat_graph.add((cat_uri, VANN.preferredNamespacePrefix, rdflib.Literal("bdr-cat")))
     cat_graph.add((cat_uri, VANN.preferredNamespaceUri, bdr_cat_ns))
     cat_graph.add((cat_uri, DCAT.themeTaxonomy, rdflib.URIRef("https://linked.data.gov.au/def/abis/vocab-themes")))
+    cat_graph.add((cat_uri, DCTERMS.title, rdflib.Literal(catalog_def.get("label"))))
     vocabularies = catalog_def.get("vocabularies", [])
     vocab_graph_details: List[VocabGraphDetails] = []
     for vocab_def in vocabularies:
