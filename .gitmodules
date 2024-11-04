@@ -1,7 +1,3 @@
-[submodule "sources/dawe-rlp-vocabs"]
-	path = sources/dawe-rlp-vocabs
-	url = https://github.com/ternaustralia/dawe-rlp-vocabs.git
-	branch = main
 [submodule "sources/bdr-vocabs"]
 	path = sources/bdr-vocabs
 	url = https://github.com/dcceew-bdr/bdr-vocabs.git
