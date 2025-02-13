@@ -91,7 +91,7 @@ themes = ["https://linked.data.gov.au/def/abis/vocab-themes/observable-propertie
 vann_prefix = "bdr-obsprops"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/obsprops/"
 root_node = "https://linked.data.gov.au/dataset/bdr/obsprops" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/observable-properties.ttl"
+source = "file://./sources/bdr-vocabs/vocabs/obsprops.ttl"
 
 [[catalogs.vocabularies]] # BDR Data Types Register (Vocab)
 name = "bdr-datatypes"
@@ -109,7 +109,16 @@ themes = []
 vann_prefix = "bdr-orgs"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/orgs/"
 root_node = "https://linked.data.gov.au/dataset/bdr/orgs" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/submitting-organisations.ttl"
+source = "file://./sources/bdr-vocabs/vocabs/orgs.ttl"
+
+[[catalogs.vocabularies]] # BDR Submission Manifest Resource Roles (Vocab)
+name = "bdr-smrr"
+keywords = ["submission", "manifest", "resource", "roles", "bdr"]
+themes = []
+vann_prefix = "bdr-smrr"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/smrr/"
+root_node = "https://linked.data.gov.au/dataset/bdr/smrr" # Concept Scheme
+source = "file://./sources/bdr-vocabs/vocabs/smrr.ttl"
 
 [[catalogs.namespaces]]
 # top-level BDR-Dataset namespace

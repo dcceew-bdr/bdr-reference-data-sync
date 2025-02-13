@@ -311,5 +311,8 @@ cython_debug/
 generated/*.zip
 generated/*/*
 !generated/.gitkeep
+old-generated/*.zip
+old-generated/*/*
+
 # Just _all_ of IDEA
 .idea/
