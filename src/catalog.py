@@ -26,7 +26,9 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     cat_graph = make_voc_graph()
     cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogs/{cat_token}")
     if cat_graph_name is not None:
-        cat_graph_name = rdflib.URIRef(cat_uri + "-catalogue")
+        cat_graph_uri = rdflib.URIRef(cat_graph_name)
+    else:
+        cat_graph_uri = rdflib.URIRef(cat_uri + "-catalogue")
     cat_graph.add((cat_uri, RDF.type, DCAT.Catalog))
     cat_graph.add((cat_uri, VANN.preferredNamespacePrefix, rdflib.Literal("bdr-cat")))
     cat_graph.add((cat_uri, VANN.preferredNamespaceUri, bdr_cat_ns))
@@ -67,7 +69,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         token=cat_token,
         cat_uri=cat_uri,
         content_graphs=vocab_graph_details,
-        graph_name=cat_graph_name,
+        graph_name=cat_graph_uri,
     )
     for vocab_graph_detail in vocab_graph_details:
         vocab_uri = vocab_graph_detail.vocab_uri
