@@ -102,9 +102,24 @@ class VocabHarvester:
                     raise
                 source_graph.parse(resp.read())
             vocab_harvester = LocalVocabHarvester(source_graph)
-        elif source_lower.startswith("file://"):
+        elif source_lower.startswith("file:"):
+            file_uri = source[5:]
+            if file_uri.startswith("//"):
+                # This is the file:// protocol, note, it _cannot_ be relative
+                file_uri = file_uri[2:]
+                if "/" not in file_uri:
+                    raise RuntimeError(f"File URI {file_uri} is not <host>/<path>")
+                host, path = file_uri.split("/", 1)
+                if len(host) == 0 or host.lower() == "localhost":
+                    # This is a local file
+                    local_path = Path(path)
+                else:
+                    # This is a remote file
+                    raise NotImplementedError(f"Remote file URIs are not supported: {file_uri}")
+            else:
+                # a "file:" string, this is relative to the current working directory
+                local_path = Path(".") / Path(file_uri)
             source_graph = rdflib.Graph(bind_namespaces="core")
-            local_path = Path(source[7:])
             if not local_path.exists():
                 raise RuntimeError(f"File {source} does not exist.")
             with open(local_path, "rb") as f:

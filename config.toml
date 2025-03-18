@@ -58,7 +58,7 @@ themes = []
 vann_prefix = "abis-vocab-themes"
 vann_namespace = "https://linked.data.gov.au/def/abis/vocab-themes/"
 root_node = "https://linked.data.gov.au/def/abis/vocab-themes" # Concept Scheme
-source = "file://./sources/abis-themes.ttl"
+source = "file:./sources/abis-themes.ttl"
 
 
 ## AGLDWG Data Roles
@@ -91,7 +91,7 @@ themes = ["https://linked.data.gov.au/def/abis/vocab-themes/observable-propertie
 vann_prefix = "bdr-obsprops"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/obsprops/"
 root_node = "https://linked.data.gov.au/dataset/bdr/obsprops" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/obsprops.ttl"
+source = "file:./sources/bdr-vocabs/vocabs/obsprops.ttl"
 
 [[catalogs.vocabularies]] # BDR Data Types Register (Vocab)
 name = "bdr-datatypes"
@@ -100,7 +100,7 @@ themes = ["https://linked.data.gov.au/def/abis/vocab-themes/datatypes"]
 vann_prefix = "bdr-datatypes"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/datatypes/"
 root_node = "https://linked.data.gov.au/dataset/bdr/datatypes" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/datatypes.ttl"
+source = "file:./sources/bdr-vocabs/vocabs/datatypes.ttl"
 
 [[catalogs.vocabularies]] # BDR Submitting Organisations Register (Vocab)
 name = "bdr-orgs"
@@ -109,7 +109,7 @@ themes = []
 vann_prefix = "bdr-orgs"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/orgs/"
 root_node = "https://linked.data.gov.au/dataset/bdr/orgs" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/orgs.ttl"
+source = "file:./sources/bdr-vocabs/vocabs/orgs.ttl"
 
 [[catalogs.vocabularies]] # BDR Submission Manifest Resource Roles (Vocab)
 name = "bdr-smrr"
@@ -118,7 +118,7 @@ themes = []
 vann_prefix = "bdr-smrr"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/smrr/"
 root_node = "https://linked.data.gov.au/dataset/bdr/smrr" # Concept Scheme
-source = "file://./sources/bdr-vocabs/vocabs/smrr.ttl"
+source = "file:./sources/bdr-vocabs/vocabs/smrr.ttl"
 
 [[catalogs.namespaces]]
 # top-level BDR-Dataset namespace
