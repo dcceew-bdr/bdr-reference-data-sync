@@ -276,6 +276,7 @@ class VocabHarvester:
             self.collection_members[c].update(m)
             for memb in m:
                 if memb in self.collection_maps:
+                    #member is a collection. Collection in a collection, it's not an unaccounted concept.
                     self.collection_maps[memb]["parents"].add(c)
                 elif memb not in self.concept_maps:
                     print(f"Skipping unknown member from this concept collection: {memb}")
@@ -550,24 +551,62 @@ class VocabHarvester:
 
             new_scheme_vocab_details = [vocab_graph_detail]
         else:
-            new_scheme_vocab_details = await self.harvest_from_all_known_schemes()
+            new_scheme_vocab_details = await self.harvest_concepts_and_collections(use_fallback_scheme=self.root_node)
         return new_scheme_vocab_details
 
-    async def harvest_from_all_known_schemes(self) -> List[VocabGraphDetails]:
+    async def harvest_concepts_and_collections(self, use_fallback_scheme: Optional[rdflib.URIRef] = None) -> List[VocabGraphDetails]:
+        schemes_harvested = set()
         new_scheme_vocab_details = []
-        #Just find all concept schemes
+        #First find all concept schemes
         for scheme in self.filtered_concept_schemes:
             vocab_graph_detail = await self.harvest_from_concept_scheme(scheme)
             new_scheme_vocab_details.append(vocab_graph_detail)
+            schemes_harvested.add(scheme)
+
+        need_harvest_fallback_scheme = False
         if len(self.concepts_only_in_collections) > 0:
             g = make_voc_graph()
-            voc_uri = rdflib.URIRef(f"urn:vocpub:collections")
-            g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
-            g.add((voc_uri, DCTERMS.title, rdflib.Literal("Concept Collections")))
-            g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concept Collections")))
-            g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
-            collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, "collections", in_scheme=False)
+            if use_fallback_scheme is not None:
+                voc_uri = use_fallback_scheme
+                add_in_scheme = True
+                if voc_uri not in schemes_harvested:
+                    need_harvest_fallback_scheme = True
+            else:
+                voc_uri = rdflib.URIRef(f"urn:vocpub:collections")
+                g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
+                g.add((voc_uri, DCTERMS.title, rdflib.Literal("Concept Collections")))
+                g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concept Collections")))
+                g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
+                add_in_scheme = False
+            collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, "collections", in_scheme=add_in_scheme)
             new_scheme_vocab_details.append(collection_vocab_detail)
+
+        if len(self.filtered_concept_schemes) < 1:
+            # No schemes, there might be unaccounted concepts
+            if len(self.unaccounted_concepts) > 0:
+                g = make_voc_graph()
+                if use_fallback_scheme is not None:
+                    voc_uri = use_fallback_scheme
+                    if voc_uri in schemes_harvested:
+                        # We already harvested this scheme, don't add it again
+                        concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, "concepts", in_scheme=True)
+                    else:
+                        concepts_vocab_detail = await self.harvest_from_concept_scheme(voc_uri, force_concepts=self.unaccounted_concepts)
+                        need_harvest_fallback_scheme = False
+                else:
+                    voc_uri = rdflib.URIRef(f"urn:vocpub:concepts")
+                    g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
+                    g.add((voc_uri, DCTERMS.title, rdflib.Literal("Vocabulary Concepts")))
+                    g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Vocabulary Concepts")))
+                    g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were not members of any ConceptScheme or Collection")))
+                    concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, "concepts", in_scheme=False)
+                new_scheme_vocab_details.append(concepts_vocab_detail)
+        if use_fallback_scheme and need_harvest_fallback_scheme:
+            g = make_voc_graph()
+            voc_uri = use_fallback_scheme
+            # harvest an empty set of concepts, so we get only the ConceptScheme definition
+            concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, set(), g, "scheme", in_scheme=False)
+            new_scheme_vocab_details.append(concepts_vocab_detail)
         return new_scheme_vocab_details
 
     async def harvest_from_ontology_vocab(self) -> List[VocabGraphDetails]:
@@ -576,7 +615,10 @@ class VocabHarvester:
         has_parts = set(
             self.root_node_details.objects(self.root_node, DCTERMS.hasPart))  # Non-standard, but TERN uses hasPart for Collections
         if len(top_concepts) < 1 and len(top_concepts_2) < 1 and len(has_parts) < 1:
-            raise RuntimeError(f"No topConcepts or hasPart collections found in Vocabulary: {self.root_node}")
+            print("Non-standard vocabulary Ontology. No topConcepts or hasPart collections found in Vocabulary: "+str(self.root_node))
+            print("Falling back to harvesting concepts and collections from the root node.")
+            return await self.harvest_concepts_and_collections(use_fallback_scheme=self.root_node)
+            #raise RuntimeError(f"No topConcepts or hasPart collections found in Vocabulary: {self.root_node}")
         defined_bys = set(self.root_node_details.subjects(RDFS.isDefinedBy, self.root_node))
         for defined_by in defined_bys:
             if defined_by in self.collection_maps:
@@ -600,7 +642,7 @@ class VocabHarvester:
         self.include_concept_collections = use_collections
         self.filter()
         self.include_concept_collections = old_include_collections
-        return [await self.harvest_from_concept_scheme(self.root_node, force_concepts=True)]
+        return [await self.harvest_from_concept_scheme(self.root_node, force_concepts=self.filtered_concepts)]
 
 
     def extract_label_from_cbd(self, target_uri: Identifier, cbd_graph: rdflib.Graph, tokenize=False) -> str:
@@ -651,27 +693,27 @@ class VocabHarvester:
             label = token_label.rstrip("_")
         return label
 
-    async def harvest_from_concept_scheme(self, scheme_uri: rdflib.URIRef, force_concepts=False, token: Optional[str] = None) -> VocabGraphDetails:
-        print(f"Harvesting Concept Scheme {scheme_uri}")
+    async def harvest_from_concept_scheme(self, scheme_uri: rdflib.URIRef, force_concepts: Optional[Set[rdflib.URIRef]]=None, token: Optional[str] = None) -> VocabGraphDetails:
+        print("Harvesting Concept Scheme "+str(scheme_uri))
         try:
             concepts: Set = self.filtered_concept_scheme_concepts[scheme_uri]
+            if len(concepts) < 1:
+                if force_concepts is None:
+                    raise RuntimeError(f"Found no concepts for the ConceptScheme: {scheme_uri}")
+                else:
+                    concepts = force_concepts
         except LookupError:
-            if not force_concepts:
+            if force_concepts is None:
                 raise RuntimeError(f"Found no concepts for the ConceptScheme: {scheme_uri}")
             else:
-                concepts = self.filtered_concepts
-        if len(concepts) < 1:
-            if not force_concepts:
-                raise RuntimeError(f"Found no concepts for the ConceptScheme: {scheme_uri}")
-            else:
-                concepts = self.filtered_concepts
+                concepts = force_concepts
         scheme_graph = await self.cbd(scheme_uri)
         if scheme_graph is None or len(scheme_graph) < 1:
             raise RuntimeError(f"Cannot get CBD for ConceptScheme: {scheme_uri}")
         if token is None:
             token = self.extract_label_from_cbd(scheme_uri, scheme_graph, tokenize=True)
         self.clean_scheme(scheme_uri, scheme_graph)
-        print("Harvesting for vocab: " + token)
+        print("Using token for scheme: " + token)
         existing_vann_prefixes = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespacePrefix))
         existing_vann_namespaces = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespaceUri))
         has_vann = len(existing_vann_prefixes) > 0 or len(existing_vann_namespaces) > 0
