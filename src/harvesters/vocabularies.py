@@ -137,7 +137,7 @@ class VocabHarvester:
         try:
             root_node = vocab_def["root_node"]
         except LookupError:
-            raise RuntimeError("No root node identified for the SPARQL endpoint.")
+            raise RuntimeError("No root node identified for the vocabulary definition.")
         if not root_node:
             root_node = None
         else:
@@ -190,9 +190,9 @@ class VocabHarvester:
                 self.root_node_details = await self.cbd(self.root_node)
             except Exception as e:
                 print(e)
-                raise RuntimeError("Could not find root node in that source vocab graph.")
+                raise RuntimeError(f"Error getting root node {self.root_node} in that source vocab graph.")
             if len(self.root_node_details) == 0:
-                raise RuntimeError("Could not find root node in that source vocab graph.")
+                raise RuntimeError(f"Could not find root node {self.root_node} in that source vocab graph.")
             self.vocab_type = check_type(self.root_node_details, self.root_node)
         else:
             self.root_node_details = None
@@ -693,9 +693,15 @@ class VocabHarvester:
         done_jobs = await asyncio.gather(*jobs, return_exceptions=True)
         for d in done_jobs:
             if isinstance(d, Exception):
-                print(d)
+                print(d, flush=True)
                 continue
             g, c = d
+            if isinstance(g, Exception):
+                print(f"Error while getting details from source for concept {c}\n{g}", flush=True)
+                continue
+            elif g is None or len(g) < 1:
+                print(f"No details found for concept {c}", flush=True)
+                continue
             self.clean_concept(c, g)
             for t in g.triples((None, None, None)):
                 vocab_graph.add(t)
