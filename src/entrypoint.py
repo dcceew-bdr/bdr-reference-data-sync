@@ -30,8 +30,8 @@ async def build_catalogs():
 
     for catalog_def in catalog_defs:
         if 'token' not in catalog_def:
-            raise RuntimeError("Catalog entry does not have name property.")
-        print(f"building {catalog_def['token']}")
+            raise RuntimeError("Catalog entry does not have token property.")
+        print(f"Building Catalogue: {catalog_def['token']}", flush=True)
         cat_details = await build_catalog(catalog_def)
         cat_ds = make_voc_graph(multigraph=True)
         cat_vg_uri: URIRef = cat_details.cat_uri
@@ -40,7 +40,7 @@ async def build_catalogs():
             # Fall-back to auto-generated, because this cannot be the same as the catalog name
             cat_rg_uri = URIRef(str(cat_vg_uri).rstrip("/#") + "-catalogue")
         if cat_vg_uri == cat_rg_uri:
-            raise RuntimeError("Catalog real-graph and virtual-graph URIs cannot be the same.")
+            raise RuntimeError(f"Catalog real-graph and virtual-graph URIs cannot be the same.\n<{cat_vg_uri}>==<{cat_rg_uri}>")
         for (s, p, o) in cat_details.graph:
             cat_ds.add((s, p, o, cat_rg_uri))
         cat_ds.add((ALL_VOCABS, RDF.type, OLIS.VirtualGraph, SystemGraphURI))
