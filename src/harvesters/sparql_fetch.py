@@ -20,7 +20,7 @@ def get_httpx_client() -> httpx.AsyncClient:
     except (AttributeError, LookupError):
         # timeouts are (connect_timeout, read_timeout, write_timeout, pool_timeout)
         cache.client = client = httpx.AsyncClient(
-            timeout=(11.0, 19.0, 6.0, 6.0),
+            timeout=(30.0, 60.0, 6.0, 60.0),
             limits=httpx.Limits(max_connections=4)
         )
     return client
