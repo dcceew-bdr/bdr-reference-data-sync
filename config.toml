@@ -1,10 +1,14 @@
-## TERN-CV Vocabularies, hosted in TERN's GraphDB instance
+# TERN-CV Vocabularies, hosted in TERN's GraphDB instance
 [[catalogs]]
+# VirtualGraph is created per catalog, with the name
+# https://linked.data.gov.au/dataset/bdr/catalogs/<token>
+# So the graph_name set below cannot be the same as the VirtualGraph name
 token = "tern-cv"
 label = "TERN Controlled Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
-graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv"
+graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
+is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
 
 [[catalogs.vocabularies]] # In TERN-CV catalog
 name = "tern-cv"
@@ -14,18 +18,20 @@ root_node = ""  # No root node, discover by concept schemes
 #root_node = "http://linked.data.gov.au/def/tern-cv"  # Note this is HTTP, not HTTPS, this is intentional
 exclude_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
 exclude_collections = []
-# This is the identifier of the named-graph (VG) this vocabulary gets loaded into
+# This is the identifier of the named-graph (RG) this vocabulary gets loaded into
 # All Vocabularies (concept schemes) that are loaded from this defintition will share this named-graph
-graph_name = "https://linked.data.gov.au/dataset/bdr/vocabs/tern-cv"
+graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
+# This vocabulary shares the same RG as the tern-cv catalog defintiion
 
 
-## NRM/EMSA/DAWE Vocabularies, hosted in TERN's GraphDB instance
+# NRM/EMSA/DAWE Vocabularies, hosted in TERN's GraphDB instance
 [[catalogs]]
 token = "nrm"
 label = "Ecological Monitoring System Australia (EMSA) Controlled Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
-graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/nrm-vocabs"
+graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/nrm-cv-rg"
+is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
 
 [[catalogs.vocabularies]] # In NRM/EMSA catalog
 name = "emsa"
@@ -35,14 +41,7 @@ root_node = "https://linked.data.gov.au/def/nrm"
 # exclude is a blacklist, don't harvest concepts from these schemes or collections
 exclude_concept_schemes = ["http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification", "http://linked.data.gov.au/dataset/bioregion/IBRA7"]
 exclude_collections = ["https://linked.data.gov.au/def/nrm/31a9f83d-9c8b-4d68-8dd7-d1b7a9a4197b",]  # exclude TERN FeatureTypes profile
-
-[[catalogs.vocabularies]] # In NRM/EMSA catalog
-name = "aclump"
-vann_prefix = "aclump-voc"
-vann_namespace = "http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/"
-root_node = "http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification"
-# include is a whitelist, it skips every concept _except_ those in this scheme or collection
-include_concept_schemes = ["http://www.neii.gov.au/def/voc/ACLUMP/australian-land-use-and-management-classification/Australian-Land-Use-and-Management-Classification"]
+graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/nrm-cv-rg"
 
 [[catalogs.vocabularies]] # In NRM/EMSA catalog
 name = "ibra7"
@@ -50,6 +49,22 @@ root_node = "http://linked.data.gov.au/dataset/bioregion/IBRA7"
 vann_prefix = "ibra7-codes"
 vann_namespace = "http://linked.data.gov.au/dataset/bioregion/"
 include_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
+
+
+## ACLUMP was moved to Linked.data.gov.au
+[[catalogs]]
+name = "alum"
+token = "alum"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/abares_australian-land-use-and-management-classification_version-8-with-pids"
+label = "Australian Land Use and Management Classification"
+
+[[catalogs.vocabularies]]
+name = "alum"
+keywords = ["land", "use", "management", "classification", "australia"]
+themes = []
+vann_prefix = "alum"
+vann_namespace = "https://linked.data.gov.au/def/alum/"
+root_node = "https://linked.data.gov.au/def/alum" # Concept Scheme
 
 
 ## ABIS Vocabularies
@@ -126,6 +141,15 @@ vann_prefix = "bdr-smrr"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/smrr/"
 root_node = "https://linked.data.gov.au/dataset/bdr/smrr" # Concept Scheme
 source = "file:./sources/bdr-vocabs/vocabs/smrr.ttl"
+
+[[catalogs.vocabularies]] # BDR Submission Manifest Resource Roles (Vocab)
+name = "bdr-sma"
+keywords = ["submission", "manifest", "actions", "bdr"]
+themes = []
+vann_prefix = "bdr-sma"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/sma/"
+root_node = "https://linked.data.gov.au/dataset/bdr/sma" # Concept Scheme
+source = "file:./sources/bdr-vocabs/vocabs/sma.ttl"
 
 [[catalogs.namespaces]]
 # top-level BDR-Dataset namespace
