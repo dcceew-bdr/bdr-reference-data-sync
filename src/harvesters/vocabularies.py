@@ -30,6 +30,7 @@ class VocabHarvester:
     is_init: bool
     source_graph: rdflib.Graph
     vocab_type: rdflib.URIRef
+    name: str
     root_node: rdflib.URIRef
     root_node_details: rdflib.Graph  # CBD of root_node
     themes: List[rdflib.URIRef]
@@ -141,7 +142,14 @@ class VocabHarvester:
             root_node = None
         else:
             root_node = rdflib.URIRef(root_node)
+        try:
+            name = vocab_def["name"]
+        except LookupError:
+            raise RuntimeError("No name identified for the Vocabulary definition.")
+        if not name:
+            raise RuntimeError("No name identified for the Vocabulary definition.")
         self.root_node = root_node
+        self.name = name
         self.themes = [rdflib.URIRef(t) for t in vocab_def.get("themes", [])]
         self.keywords = vocab_def.get("keywords", [])
         graph_name_str: Optional[str] = vocab_def.get("graph_name", None)
@@ -538,7 +546,7 @@ class VocabHarvester:
         if self.vocab_type == OWL.Ontology:  # This is a special TERN Ontology-ConceptScheme-Vocab, treat differently
             new_scheme_vocab_details = await self.harvest_from_ontology_vocab()
         elif self.vocab_type == SKOS.ConceptScheme:  # This is maybe a VocPub compliant Vocabulary, treat it well
-            vocab_graph_detail = await self.harvest_from_concept_scheme(self.root_node)
+            vocab_graph_detail = await self.harvest_from_concept_scheme(self.root_node, token=self.name)
 
             new_scheme_vocab_details = [vocab_graph_detail]
         else:
@@ -636,12 +644,14 @@ class VocabHarvester:
                     raise RuntimeError(f"Cannot find any skos:preflabel or rdfs:label to use to identify {target_uri}")
         if tokenize:
             token_label = str(label).lower().replace(" ", "_")
+            if token_label.startswith("bdr_"):
+                token_label = token_label[4:]
             token_len = min(len(token_label), 16)
             token_label = token_label[:token_len]
             label = token_label.rstrip("_")
         return label
 
-    async def harvest_from_concept_scheme(self, scheme_uri: rdflib.URIRef, force_concepts=False) -> VocabGraphDetails:
+    async def harvest_from_concept_scheme(self, scheme_uri: rdflib.URIRef, force_concepts=False, token: Optional[str] = None) -> VocabGraphDetails:
         print(f"Harvesting Concept Scheme {scheme_uri}")
         try:
             concepts: Set = self.filtered_concept_scheme_concepts[scheme_uri]
@@ -658,7 +668,8 @@ class VocabHarvester:
         scheme_graph = await self.cbd(scheme_uri)
         if scheme_graph is None or len(scheme_graph) < 1:
             raise RuntimeError(f"Cannot get CBD for ConceptScheme: {scheme_uri}")
-        token = self.extract_label_from_cbd(scheme_uri, scheme_graph, tokenize=True)
+        if token is None:
+            token = self.extract_label_from_cbd(scheme_uri, scheme_graph, tokenize=True)
         self.clean_scheme(scheme_uri, scheme_graph)
         print("Harvesting for vocab: " + token)
         existing_vann_prefixes = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespacePrefix))
