@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Union, Tuple, Optional
 import rdflib
 from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO, DCTERMS
 from rdflib.plugins.stores import sparqlstore
@@ -20,16 +20,19 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     else:
         cat_harvester = None
     cat_token = catalog_def["token"]
+    cat_graph_name: Optional[str] = catalog_def.get("graph_name", None)
     cat_path = Path(".") / "generated" / cat_token
     cat_path.mkdir(exist_ok=True, parents=True)
     cat_graph = make_voc_graph()
     cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogs/{cat_token}")
+    if cat_graph_name is not None:
+        cat_graph_name = rdflib.URIRef(cat_uri + "-catalogue")
     cat_graph.add((cat_uri, RDF.type, DCAT.Catalog))
     cat_graph.add((cat_uri, VANN.preferredNamespacePrefix, rdflib.Literal("bdr-cat")))
     cat_graph.add((cat_uri, VANN.preferredNamespaceUri, bdr_cat_ns))
     cat_graph.add((cat_uri, DCAT.themeTaxonomy, rdflib.URIRef("https://linked.data.gov.au/def/abis/vocab-themes")))
     cat_graph.add((cat_uri, DCTERMS.title, rdflib.Literal(catalog_def.get("label"))))
-    vocabularies = catalog_def.get("vocabularies", [])
+    vocabularies: List[Dict] = catalog_def.get("vocabularies", [])
     vocab_graph_details: List[VocabGraphDetails] = []
     for vocab_def in vocabularies:
         vocab_source = vocab_def.get("source", None)
@@ -57,10 +60,15 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         ns_def_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/ns/{namespace_name}")
         cat_graph.add((ns_def_uri, VANN.preferredNamespacePrefix, rdflib.Literal(namespace_vann_prefix)))
         cat_graph.add((ns_def_uri, VANN.preferredNamespaceUri, rdflib.Literal(namespace_vann_namespace, datatype=XSD.anyURI)))
-        cat_graph.add((cat_uri, DCTERMS.hasPart, ns_def_uri))
-        cat_graph.add((ns_def_uri, DCTERMS.isPartOf, cat_uri))
+        cat_graph.add((cat_uri, DCTERMS.hasPart, ns_def_uri))  # TODO: <-- Is this needed?
+        cat_graph.add((ns_def_uri, DCTERMS.isPartOf, cat_uri))  # TODO: <-- Is this needed?
     cat_details = CatalogGraphDetails(
-        graph=cat_graph, token=cat_token, cat_uri=cat_uri, content_graphs=vocab_graph_details)
+        graph=cat_graph,
+        token=cat_token,
+        cat_uri=cat_uri,
+        content_graphs=vocab_graph_details,
+        graph_name=cat_graph_name,
+    )
     for vocab_graph_detail in vocab_graph_details:
         vocab_uri = vocab_graph_detail.vocab_uri
         cat_graph.add((vocab_uri, RDF.type, DCAT.Dataset))

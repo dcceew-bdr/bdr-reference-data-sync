@@ -1,6 +1,6 @@
 from itertools import chain
 from pathlib import Path
-from typing import List, Dict, Any, Set, Tuple, Union, Awaitable
+from typing import List, Dict, Any, Set, Tuple, Union, Awaitable, Optional
 import asyncio
 import rdflib
 from rdflib.plugins.stores import sparqlstore
@@ -34,6 +34,7 @@ class VocabHarvester:
     root_node_details: rdflib.Graph  # CBD of root_node
     themes: List[rdflib.URIRef]
     keywords: List[str]
+    graph_name: Optional[rdflib.URIRef]
     vann_prefix: Union[str, None]
     vann_namespace: Union[str, None]
     concept_schemes: Set[rdflib.URIRef]
@@ -68,6 +69,7 @@ class VocabHarvester:
         self.vann_namespace = None
         self.themes = []
         self.keywords = []
+        self.graph_name = None
         self.reset_filters()
 
     def reset_filters(self):
@@ -141,6 +143,7 @@ class VocabHarvester:
         self.root_node = root_node
         self.themes = [rdflib.URIRef(t) for t in vocab_def.get("themes", [])]
         self.keywords = vocab_def.get("keywords", [])
+        self.graph_name = vocab_def.get("graph_name", None)
         self.vann_prefix = vocab_def.get("vann_prefix", None)
         self.vann_namespace = vocab_def.get("vann_namespace", None)
         exclude_concept_schemes = vocab_def.get("exclude_concept_schemes", [])
@@ -149,6 +152,7 @@ class VocabHarvester:
         include_collections = vocab_def.get("include_collections", [])
         include_concept_schemes = vocab_def.get("include_concept_schemes", [])
         include_concepts = vocab_def.get("include_concepts", [])
+
         self.exclude_concept_schemes = [rdflib.URIRef(e) for e in exclude_concept_schemes]
         self.exclude_concept_collections = [rdflib.URIRef(e) for e in exclude_collections]
         self.exclude_concepts = [rdflib.URIRef(e) for e in exclude_concepts]
@@ -549,9 +553,9 @@ class VocabHarvester:
             g = make_voc_graph()
             voc_uri = rdflib.URIRef(f"urn:vocpub:collections")
             g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
-            g.add((voc_uri, DCTERMS.title, rdflib.Literal("Collections")))
-            g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Collections")))
-            g.add((voc_uri, SKOS.note, rdflib.Literal("Concepts that are only members of collections, and no other ConceptSchemes")))
+            g.add((voc_uri, DCTERMS.title, rdflib.Literal("Concept Collections")))
+            g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concept Collections")))
+            g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
             collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, "collections", in_scheme=False)
             new_scheme_vocab_details.append(collection_vocab_detail)
         return new_scheme_vocab_details
@@ -730,7 +734,10 @@ class VocabHarvester:
                                  keywords=all_keywords,
                                  themes=all_themes,
                                  token=token,
-                                 vocab_uri=scheme_uri)
+                                 vocab_uri=scheme_uri,
+                                 # This may be None, in which case we use the catalog named-graph
+                                 graph_name=self.graph_name,
+                                 )
 
 
 

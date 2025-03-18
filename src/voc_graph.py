@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import rdflib
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ class VocabGraphDetails:
     themes: List[rdflib.URIRef]
     token: str
     vocab_uri: rdflib.URIRef  # This is the SKOS:ConceptScheme
-
+    graph_name: Optional[rdflib.URIRef] = None
 
 @dataclass
 class CatalogGraphDetails:
@@ -24,6 +24,7 @@ class CatalogGraphDetails:
     token: str
     cat_uri: rdflib.URIRef  # This is the DCAT:Catalog
     content_graphs: List[VocabGraphDetails]
+    graph_name: Optional[rdflib.URIRef] = None
 
 
 def make_voc_graph(multigraph: bool = False):
