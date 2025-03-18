@@ -87,12 +87,13 @@ class VocabHarvester:
         self.is_init = True
 
     @classmethod
-    def build_from_source(cls, source: str) -> 'VocabHarvester':
+    def build_from_source(cls, source: str, extra_options: Dict[str, Any]) -> 'VocabHarvester':
         source_lower = source.lower()
         if source_lower.startswith("sparql:"):
             store = sparqlstore.SPARQLStore(query_endpoint=source[7:], method='POST', returnFormat='json')
             source_graph = rdflib.Graph(store=store, bind_namespaces="core")  # bind only core, so SPARQL prefixes in the sparql queries work properly
-            vocab_harvester = SPARQLVocabHarvester(source_graph)
+            is_graph_db = extra_options.get("is_graph_db", False) # GraphDB-specific harvester behaviour
+            vocab_harvester = SPARQLVocabHarvester(source_graph, is_graph_db=is_graph_db)
         elif source_lower.startswith("https:") or source_lower.startswith("http:"):
             source_graph = rdflib.Graph(bind_namespaces="core")  # bind only core, so SPARQL prefixes in the sparql queries work properly
             with httpx.Client() as client:
@@ -773,35 +774,36 @@ class VocabHarvester:
 
 
 class SPARQLVocabHarvester(VocabHarvester):
-    def __init__(self, source_graph: rdflib.Graph):
+    def __init__(self, source_graph: rdflib.Graph, is_graph_db: bool = False):
         super().__init__(source_graph)
+        self.is_graph_db: bool = is_graph_db
 
     async def cbd(self, identifier: rdflib.URIRef) -> rdflib.Graph:
-        return await sparql_describe(self.source_graph, identifier)
+        return await sparql_describe(self.source_graph, identifier, explicit=self.is_graph_db)
 
     async def subjects(self, p, o):
-        return await sparql_subjects(self.source_graph, p, o)
+        return await sparql_subjects(self.source_graph, p, o, explicit=self.is_graph_db)
 
     async def objects(self, s, p):
-        return await sparql_objects(self.source_graph, s, p)
+        return await sparql_objects(self.source_graph, s, p, explicit=self.is_graph_db)
 
     async def get_broadest_concepts(self) -> Set[rdflib.URIRef]:
-        return await sparql_broadest_concepts(self.source_graph)
+        return await sparql_broadest_concepts(self.source_graph, explicit=self.is_graph_db)
 
     async def get_all_concepts(self) -> Set[rdflib.URIRef]:
-        return await sparql_all_concepts(self.source_graph)
+        return await sparql_all_concepts(self.source_graph, explicit=self.is_graph_db)
 
     async def get_concept_scheme_hierarchy(self, s: rdflib.URIRef) -> Tuple[Set[Identifier], Set[Identifier]]:
-        return await sparql_concept_scheme_hierarchy(self.source_graph, s)
+        return await sparql_concept_scheme_hierarchy(self.source_graph, s, explicit=self.is_graph_db)
 
     async def get_concept_scheme_concepts(self, s: rdflib.URIRef) -> Set[Identifier]:
-        return await sparql_concept_scheme_concepts(self.source_graph, s)
+        return await sparql_concept_scheme_concepts(self.source_graph, s, explicit=self.is_graph_db)
 
     async def get_collection_all_members(self, c: rdflib.URIRef) -> Set[Identifier]:
-        return await sparql_collection_all_members(self.source_graph, c)
+        return await sparql_collection_all_members(self.source_graph, c, explicit=self.is_graph_db)
 
     async def get_collection_immediate_members(self, c: rdflib.URIRef) -> Set[Identifier]:
-        return await sparql_collection_immediate_members(self.source_graph, c)
+        return await sparql_collection_immediate_members(self.source_graph, c, explicit=self.is_graph_db)
 
 class LocalVocabHarvester(VocabHarvester):
     def __init__(self, source_graph: rdflib.Graph):

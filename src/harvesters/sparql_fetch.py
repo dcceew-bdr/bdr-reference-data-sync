@@ -31,7 +31,7 @@ async def sparql_describe(
     graph: rdflib.Graph,
     identifier: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,  # Only list real triples from GraphDB
+    explicit: bool = False,  # Only list real triples from GraphDB
 ) -> rdflib.Graph:
     # This is the same as graph.cbd but it can be run on a remote SPARQL endpoint
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
@@ -75,7 +75,7 @@ async def sparql_subjects(
     p: rdflib.URIRef,
     o: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> List[Identifier]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''SELECT ?s {explicit_clause} WHERE {{ BIND (<{p}> as ?p). BIND (<{o}> as ?o). ?s ?p ?o. }}'''
@@ -90,7 +90,7 @@ async def sparql_objects(
     s: rdflib.URIRef,
     p: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> List[Identifier]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''SELECT ?o {explicit_clause} WHERE {{ BIND (<{s}> as ?s). BIND (<{p}> as ?p). ?s ?p ?o. }}'''
@@ -104,7 +104,7 @@ async def sparql_concept_scheme_hierarchy(
     graph: rdflib.Graph,
     s: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Tuple[Set[Identifier], Set[Identifier]]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\
@@ -131,7 +131,7 @@ async def sparql_concept_scheme_concepts(
     graph: rdflib.Graph,
     s: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Set[Identifier]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\
@@ -154,7 +154,7 @@ async def sparql_collection_all_members(
     graph: rdflib.Graph,
     c: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Set[Identifier]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\
@@ -176,7 +176,7 @@ async def sparql_collection_immediate_members(
     graph: rdflib.Graph,
     c: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Set[Identifier]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\
@@ -197,7 +197,7 @@ async def sparql_collection_immediate_members(
 async def sparql_all_concepts(
     graph: rdflib.Graph,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Set[rdflib.URIRef]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\
@@ -232,7 +232,7 @@ async def sparql_all_concepts(
 async def sparql_broadest_concepts(
     graph: rdflib.Graph,
     client: Union[httpx.AsyncClient, None] = None,
-    explicit: bool = True,
+    explicit: bool = False,
 ) -> Set[rdflib.URIRef]:
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
     sparql = f'''\

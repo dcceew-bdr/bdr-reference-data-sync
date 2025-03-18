@@ -16,7 +16,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
 
     harvesters = {}
     if cat_source is not None and len(cat_source) > 0:
-        harvesters[cat_source] = cat_harvester = VocabHarvester.build_from_source(cat_source)
+        harvesters[cat_source] = cat_harvester = VocabHarvester.build_from_source(cat_source, catalog_def)
     else:
         cat_harvester = None
     cat_token = catalog_def["token"]
@@ -42,7 +42,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
             if vocab_source in harvesters:
                 harvester = harvesters[vocab_source]
             else:
-                harvester = VocabHarvester.build_from_source(vocab_source)
+                harvester = VocabHarvester.build_from_source(vocab_source, vocab_def)
         else:
             if cat_harvester is None:
                 raise RuntimeError(
