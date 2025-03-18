@@ -157,6 +157,18 @@ name = "bdr-ds"
 vann_prefix = "bdr-ds"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
 
+[[catalogs]]
+token = "asls"
+label = "Australian Soil and Landscape Survey Field Handbook"
+source = ""
+
+[[catalogs.vocabularies]]
+name = "asls-vegetation"
+label = "ASLS Vegetation classifiers (3ed)"
+source = "sparql:https://vocabs.ardc.edu.au/repository/api/sparql/csiro_asls-vegetation-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/vegetation" # concept scheme
+
+
 
 [extra_keywords_mappings]
 # Manually map ConceptScheme IDs or Collection IDs to extra keywords
