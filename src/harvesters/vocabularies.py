@@ -125,7 +125,7 @@ class VocabHarvester:
             root_node = rdflib.URIRef(root_node)
         self.root_node = root_node
         self.themes = [rdflib.URIRef(t) for t in vocab_def.get("themes", [])]
-        self.kewords = vocab_def.get("keywords", [])
+        self.keywords = vocab_def.get("keywords", [])
         self.vann_prefix = vocab_def.get("vann_prefix", None)
         self.vann_namespace = vocab_def.get("vann_namespace", None)
         exclude_concept_schemes = vocab_def.get("exclude_concept_schemes", [])
