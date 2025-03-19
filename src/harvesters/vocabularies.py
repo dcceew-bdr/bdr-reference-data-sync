@@ -578,22 +578,23 @@ class VocabHarvester:
                 g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concept Collections")))
                 g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
                 add_in_scheme = False
-            collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, "collections", in_scheme=add_in_scheme)
+            collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, self.name+"-collections", in_scheme=add_in_scheme)
             new_scheme_vocab_details.append(collection_vocab_detail)
 
         if len(self.filtered_concept_schemes) < 1:
             # No schemes, there might be unaccounted concepts
             if len(self.unaccounted_concepts) > 0:
-                g = make_voc_graph()
                 if use_fallback_scheme is not None:
                     voc_uri = use_fallback_scheme
                     if voc_uri in schemes_harvested:
                         # We already harvested this scheme, don't add it again
+                        g = make_voc_graph()
                         concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, self.name+"-concepts", in_scheme=True)
                     else:
                         concepts_vocab_detail = await self.harvest_from_concept_scheme(voc_uri, force_concepts=self.unaccounted_concepts)
                         need_harvest_fallback_scheme = False
                 else:
+                    g = make_voc_graph()
                     voc_uri = rdflib.URIRef(f"urn:vocpub:concepts")
                     g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
                     g.add((voc_uri, DCTERMS.title, rdflib.Literal("Vocabulary Concepts")))
@@ -602,8 +603,6 @@ class VocabHarvester:
                     concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, self.name+"-concepts", in_scheme=False)
                 new_scheme_vocab_details.append(concepts_vocab_detail)
         if use_fallback_scheme and need_harvest_fallback_scheme:
-            g = make_voc_graph()
-            voc_uri = use_fallback_scheme
             # harvest an empty set of concepts, so we get only the ConceptScheme definition
             concepts_vocab_detail = await self.harvest_from_concept_scheme(use_fallback_scheme, force_concepts=set(), token=self.name+"-scheme")
             new_scheme_vocab_details.append(concepts_vocab_detail)
