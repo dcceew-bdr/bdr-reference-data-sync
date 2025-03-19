@@ -1,4 +1,6 @@
 import json
+import urllib
+import urllib.parse
 from typing import Union, List, Dict, Any, Tuple, Set
 import threading
 import httpx
@@ -32,6 +34,7 @@ async def sparql_describe(
     identifier: rdflib.URIRef,
     client: Union[httpx.AsyncClient, None] = None,
     explicit: bool = False,  # Only list real triples from GraphDB
+    infer: Union[bool, None] = False
 ) -> rdflib.Graph:
     # This is the same as graph.cbd but it can be run on a remote SPARQL endpoint
     explicit_clause = "FROM <http://www.ontotext.com/explicit>" if explicit else ""
@@ -42,8 +45,22 @@ async def sparql_describe(
         endpoint = graph.store.query_endpoint
     except AttributeError:
         raise RuntimeError("sparql_describe only works on SPARQLStore endpoints")
+    additional_args = {}
+    if infer is not None:
+        if infer is True:
+            infer_string = "infer=true"
+            additional_args["infer"] = "true"
+        else:
+            infer_string = "infer=false"
+            additional_args["infer"] = "false"
+        scheme, netloc, _url, _query_string, fragment = urllib.parse.urlsplit(endpoint)
+        if len(_query_string) < 1:
+            _query_string = infer_string
+        else:
+            _query_string = _query_string + "&"+ infer_string
+        endpoint = urllib.parse.urlunsplit((scheme, netloc, _url, _query_string, fragment))
     resp = await client.post(
-        endpoint, data={"query": sparql}, headers={"Accept": "text/turtle", "Accept-Encoding": "gzip, deflate"}
+        endpoint, data={"query": sparql, **additional_args}, headers={"Accept": "text/turtle", "Accept-Encoding": "gzip, deflate"}
     )
     content = await resp.aread()
     g = make_voc_graph()
@@ -51,15 +68,29 @@ async def sparql_describe(
     return g
 
 
-async def remote_sparql(graph: rdflib.Graph, query, client: Union[httpx.AsyncClient, None] = None) -> jsonresults.JSONResult:
+async def remote_sparql(graph: rdflib.Graph, query, client: Union[httpx.AsyncClient, None] = None, infer: Union[bool, None] = False) -> jsonresults.JSONResult:
     if client is None:
         client = get_httpx_client()
     try:
         endpoint = graph.store.query_endpoint
     except AttributeError:
         raise RuntimeError("SPARQL Remote lookup only works on SPARQLStore endpoints")
+    additional_args = {}
+    if infer is not None:
+        if infer is True:
+            infer_string = "infer=true"
+            additional_args["infer"] = "true"
+        else:
+            infer_string = "infer=false"
+            additional_args["infer"] = "false"
+        scheme, netloc, _url, _query_string, fragment = urllib.parse.urlsplit(endpoint)
+        if len(_query_string) < 1:
+            _query_string = infer_string
+        else:
+            _query_string = _query_string + "&"+ infer_string
+        endpoint = urllib.parse.urlunsplit((scheme, netloc, _url, _query_string, fragment))
     resp = await client.post(
-        endpoint, data={"query": query}, headers={"Accept": "application/json", "Accept-Encoding": "gzip, deflate"}
+        endpoint, data={"query": query, **additional_args}, headers={"Accept": "application/sparql-results+json", "Accept-Encoding": "gzip, deflate"}
     )
     content = await resp.aread()
     try:
