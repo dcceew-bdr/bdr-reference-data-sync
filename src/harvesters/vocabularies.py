@@ -589,7 +589,7 @@ class VocabHarvester:
                     voc_uri = use_fallback_scheme
                     if voc_uri in schemes_harvested:
                         # We already harvested this scheme, don't add it again
-                        concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, "concepts", in_scheme=True)
+                        concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, self.name+"-concepts", in_scheme=True)
                     else:
                         concepts_vocab_detail = await self.harvest_from_concept_scheme(voc_uri, force_concepts=self.unaccounted_concepts)
                         need_harvest_fallback_scheme = False
@@ -599,7 +599,7 @@ class VocabHarvester:
                     g.add((voc_uri, DCTERMS.title, rdflib.Literal("Vocabulary Concepts")))
                     g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Vocabulary Concepts")))
                     g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were not members of any ConceptScheme or Collection")))
-                    concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, "concepts", in_scheme=False)
+                    concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, self.name+"-concepts", in_scheme=False)
                 new_scheme_vocab_details.append(concepts_vocab_detail)
         if use_fallback_scheme and need_harvest_fallback_scheme:
             g = make_voc_graph()
