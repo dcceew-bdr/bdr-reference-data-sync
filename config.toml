@@ -168,6 +168,35 @@ label = "ASLS Vegetation classifiers (3ed)"
 source = "sparql:https://vocabs.ardc.edu.au/repository/api/sparql/csiro_asls-vegetation-classifiers_3ed"
 root_node = "http://anzsoil.org/def/au/asls/vegetation" # concept scheme
 
+[[catalogs.vocabularies]]
+name = "asls-location"
+label = "ASLS Location classifiers (3ed)"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/csiro_asls-location-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/location" # concept scheme
+
+[[catalogs.vocabularies]]
+name = "asls-landform"
+label = "ASLS Landform classifiers (3ed)"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/csiro_landform-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/landform" # concept scheme
+
+[[catalogs.vocabularies]]
+name = "asls-land-surface"
+label = "ASLS Land Surface classifiers (3ed)"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/csiro_land-surface-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/land-surface" # concept scheme
+
+[[catalogs.vocabularies]]
+name = "asls-soil-prof"
+label = "ASLS Soil Profile classifiers (3ed)"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/csiro-ansis_soil-profile-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/soil-profile" # concept scheme
+
+[[catalogs.vocabularies]]
+name = "asls-substrate"
+label = "ASLS Substrate classifiers (3ed)"
+source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/csiro_asls-substrate-classifiers_3ed"
+root_node = "http://anzsoil.org/def/au/asls/substrate" # concept scheme
 
 
 [extra_keywords_mappings]
