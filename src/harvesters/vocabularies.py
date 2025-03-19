@@ -605,7 +605,7 @@ class VocabHarvester:
             g = make_voc_graph()
             voc_uri = use_fallback_scheme
             # harvest an empty set of concepts, so we get only the ConceptScheme definition
-            concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, set(), g, "scheme", in_scheme=False)
+            concepts_vocab_detail = await self.harvest_from_concept_scheme(use_fallback_scheme, force_concepts=set(), token=self.name+"-scheme")
             new_scheme_vocab_details.append(concepts_vocab_detail)
         return new_scheme_vocab_details
 
