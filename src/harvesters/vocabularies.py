@@ -636,12 +636,14 @@ class VocabHarvester:
                 if part_uri not in self.exclude_concept_collections:
                     use_collections.append(part_uri)
         if len(use_collections) < 1:
-            raise RuntimeError(f"No topConcepts or linked collections found in Vocabulary: {self.root_node}")
-        # Filter on collections and treat the ontology as a TopConcept
-        old_include_collections = self.include_concept_collections
-        self.include_concept_collections = use_collections
-        self.filter()
-        self.include_concept_collections = old_include_collections
+            if len(top_concepts) < 1 and len(top_concepts_2) < 1:
+                raise RuntimeError(f"No topConcepts or linked collections found in Vocabulary: {self.root_node}")
+        else:
+            # Filter on collections and treat the ontology as a TopConcept
+            old_include_collections = self.include_concept_collections
+            self.include_concept_collections = use_collections
+            self.filter()
+            self.include_concept_collections = old_include_collections
         return [await self.harvest_from_concept_scheme(self.root_node, force_concepts=self.filtered_concepts)]
 
 
