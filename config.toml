@@ -4,7 +4,7 @@
 # https://linked.data.gov.au/dataset/bdr/catalogs/<token>
 # So the graph_name set below cannot be the same as the VirtualGraph name
 token = "tern-cv"
-label = "TERN Controlled Vocabularies"
+label = "TERN Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
@@ -27,7 +27,7 @@ graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
 # NRM/EMSA/DAWE Vocabularies, hosted in TERN's GraphDB instance
 [[catalogs]]
 token = "nrm"
-label = "Ecological Monitoring System Australia (EMSA) Controlled Vocabularies"
+label = "EMSA Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/nrm-cv-rg"
@@ -51,12 +51,12 @@ vann_namespace = "http://linked.data.gov.au/dataset/bioregion/"
 include_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
 
 
-## ACLUMP was moved to Linked.data.gov.au
+## ACLUMP was moved to linked.data.gov.au
 [[catalogs]]
 name = "alum"
 token = "alum"
 source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/abares_australian-land-use-and-management-classification_version-8-with-pids"
-label = "Australian Land Use and Management Classification"
+label = "ALUM Vocabularies"
 
 [[catalogs.vocabularies]]
 name = "alum"
@@ -83,27 +83,10 @@ root_node = "https://linked.data.gov.au/def/abis/vocab-themes" # Concept Scheme
 source = "file:./sources/abis-themes.ttl"
 
 
-## AGLDWG Data Roles
-[[catalogs]]
-token = "data-roles"
-label = "Data Roles"
-source = ""  # No Catalog-level Source, vocab is its own file
-
-[[catalogs.vocabularies]] # AGLDWG Data Roles Vocabulary
-name = "data-roles"
-keywords = ["data", "roles", "agldwg"]
-themes = ["https://linked.data.gov.au/def/abis/vocab-themes/data-roles"]
-vann_prefix = "data-roles"
-vann_namespace = "https://linked.data.gov.au/def/data-roles/"
-root_node = "https://linked.data.gov.au/def/data-roles" # Concept Scheme
-# This is an example of a HTTPS source, loaded from the web
-source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
-
-
-## BDR Vocabularies and Registers
+## BDR Vocabularies
 [[catalogs]]
 token = "bdr-cv"
-label = "BDR Vocabularies and Registers"
+label = "BDR Vocabularies"
 source = ""  # No Source, each BDR Vocab/Register has its own source file
 
 [[catalogs.vocabularies]] # BDR Observable Properties Register (Vocab)
@@ -151,6 +134,17 @@ vann_namespace = "https://linked.data.gov.au/dataset/bdr/sma/"
 root_node = "https://linked.data.gov.au/dataset/bdr/sma" # Concept Scheme
 source = "file:./sources/bdr-vocabs/vocabs/sma.ttl"
 
+[[catalogs.vocabularies]] # AGLDWG Data Roles Vocabulary
+name = "data-roles"
+keywords = ["data", "roles", "agldwg"]
+themes = ["https://linked.data.gov.au/def/abis/vocab-themes/data-roles"]
+vann_prefix = "data-roles"
+vann_namespace = "https://linked.data.gov.au/def/data-roles/"
+root_node = "https://linked.data.gov.au/def/data-roles" # Concept Scheme
+# This is an example of a HTTPS source, loaded from the web
+source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
+
+
 [[catalogs.namespaces]]
 # top-level BDR-Dataset namespace
 name = "bdr-ds"
@@ -159,7 +153,7 @@ vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
 
 [[catalogs]]
 token = "asls"
-label = "Australian Soil and Landscape Survey Field Handbook"
+label = "ASLS Vocabularies"
 source = ""
 
 [[catalogs.vocabularies]]
