@@ -4,7 +4,7 @@
 # https://linked.data.gov.au/dataset/bdr/catalogs/<token>
 # So the graph_name set below cannot be the same as the VirtualGraph name
 token = "tern-cv"
-label = "TERN Controlled Vocabularies"
+label = "TERN Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
@@ -27,7 +27,7 @@ graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/tern-cv-rg"
 # NRM/EMSA/DAWE Vocabularies, hosted in TERN's GraphDB instance
 [[catalogs]]
 token = "nrm"
-label = "Ecological Monitoring System Australia (EMSA) Controlled Vocabularies"
+label = "EMSA Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogs/nrm-cv-rg"
@@ -56,7 +56,7 @@ include_concept_schemes = ["http://linked.data.gov.au/dataset/bioregion/IBRA7"]
 name = "alum"
 token = "alum"
 source = "sparql:http://vocabs.ardc.edu.au/repository/api/sparql/abares_australian-land-use-and-management-classification_version-8-with-pids"
-label = "Australian Land Use and Management Classification"
+label = "ALUM Vocabularies"
 
 [[catalogs.vocabularies]]
 name = "alum"
@@ -103,7 +103,7 @@ source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
 ## BDR Vocabularies and Registers
 [[catalogs]]
 token = "bdr-cv"
-label = "BDR Vocabularies and Registers"
+label = "BDR-Defined Vocabularies"
 source = ""  # No Source, each BDR Vocab/Register has its own source file
 
 [[catalogs.vocabularies]] # BDR Observable Properties Register (Vocab)
@@ -159,7 +159,7 @@ vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
 
 [[catalogs]]
 token = "asls"
-label = "Australian Soil and Landscape Survey Field Handbook"
+label = "ASLS Vocabularies"
 source = ""
 
 [[catalogs.vocabularies]]
