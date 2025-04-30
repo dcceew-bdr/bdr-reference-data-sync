@@ -108,11 +108,11 @@ source = ""  # No Source, each BDR Vocab/Register has its own source file
 
 [[catalogs.vocabularies]] # BDR Observable Properties Register (Vocab)
 name = "bdr-observable-properties"
-keywords = ["properties", "observable properties", "obsprops", "bdr"]
+keywords = ["properties", "observable properties", "obsprops", "op", "bdr"]
 themes = ["https://linked.data.gov.au/def/abis/vocab-themes/observable-properties"]
-vann_prefix = "bdr-obsprops"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/obsprops/"
-root_node = "https://linked.data.gov.au/dataset/bdr/obsprops" # Concept Scheme
+vann_prefix = "bdr-op"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/op/"
+root_node = "https://linked.data.gov.au/dataset/bdr/op" # Concept Scheme
 source = "file:./sources/bdr-vocabs/vocabs/obsprops.ttl"
 
 [[catalogs.vocabularies]] # BDR Data Types Register (Vocab)
