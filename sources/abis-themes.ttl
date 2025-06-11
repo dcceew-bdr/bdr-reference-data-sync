@@ -1,57 +1,96 @@
-@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-@prefix cs: <https://linked.data.gov.au/def/abis/vocab-themes> .
-@prefix : <https://linked.data.gov.au/def/abis/vocab-themes/> .
+PREFIX : <https://linked.data.gov.au/def/abis/vocab-themes/>
+PREFIX cs: <https://linked.data.gov.au/def/abis/vocab-themes>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <https://schema.org/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 
-cs: a skos:ConceptScheme ;
-    skos:hasTopConcept :feature-types ;
-    skos:hasTopConcept :sampling-types ;
-    skos:hasTopConcept :data-roles ;
-    skos:hasTopConcept :datatypes ;
-    skos:hasTopConcept :procedures ;
-    skos:hasTopConcept :observation-types ;
-    skos:hasTopConcept :observable-properties ;
-    skos:prefLabel "ABIS Themed-Vocabulary Themes"@en;
-    .
+cs:
+    a skos:ConceptScheme ;
+    skos:hasTopConcept
+        :datatypes ,
+        :data-roles ,
+        :feature-types ,
+        :observation-types ,
+        :observable-properties ,
+        :procedures ,
+        :sampling-types ;
+    skos:prefLabel "ABIS Vocabulary Themes"@en;
+    skos:definition "This vocabulary contains themes that vocabularies by data created according to the the Australian Biodiversity Information Standard (ABIS) are categorised with." ;
+    schema:creator <https://linked.data.gov.au/org/dcceew> ;
+    schema:publisher <https://linked.data.gov.au/org/dcceew> ;
+    schema:dateCreated "2024-06-21"^^xsd:date ;
+    schema:dateModified "2025-04-16"^^xsd:date ;
+    schema:license <http://purl.org/NET/rdflicense/cc-by4.0> ;
+    skos:historyNote "Created by the BDR team in 2024 to assist with management of the BDR content" ;
+.
 
-:data-roles a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Data Roles";
-    skos:definition "Vocabularies with the dcat:theme abis/data-themes:data-roles can be used for prov role attributions on ABIS Datasets."@en;
-    skos:topConceptOf cs: ;
-    .
+<https://linked.data.gov.au/org/dcceew>
+    a schema:Organization ;
+    schema:name "Department of Climate Change, Energy, the Environment and Water, DCCEEW" ;
+    schema:url "https://www.dcceew.gov.au"^^xsd:anyURI ;
+.
 
-:datatypes a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Data Types";
+:datatypes
+    a skos:Concept ;
+    skos:prefLabel "Data Types";
     skos:definition "Vocabularies with the dcat:theme abis/data-themes:datatypes can be used for Literal Datatypes in ABIS Datasets."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
     skos:topConceptOf cs: ;
-    .
+.
 
-:feature-types a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Feature Types";
+:data-roles 
+    a skos:Concept ;
+    skos:prefLabel "Data Roles";
+    skos:definition "Vocabularies with the dcat:theme abis/data-themes:data-roles can be used for prov role attributions on ABIS Datasets."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
+    skos:topConceptOf cs: ;
+.
+
+:feature-types 
+    a skos:Concept ;
+    skos:prefLabel "Feature Types";
     skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:feature-type can be used where concepts go in the tern:featureType slot"@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
     skos:topConceptOf cs: ;
-    .
+.
 
-:sampling-types a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Sampling Types";
-    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:sample-type can be used where concepts go in the tern:samplingType or sdo:additionalType slot on a tern:Sampling or sosa:Sampling."@en;
-    skos:topConceptOf cs: ;
-    .
-
-:observation-types a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Observation Types";
-    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
-    skos:topConceptOf cs: ;
-    .
-
-:procedures a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Procedures";
-    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
-    skos:topConceptOf cs: ;
-    .
-
-:observable-properties a skos:Concept ;
-    skos:prefLabel "ABIS Vocab Theme: Observable Properties";
+:observable-properties 
+    a skos:Concept ;
+    skos:prefLabel "Observable Properties";
     skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observable-properties can be used where concepts go in observableProperty on a sosa:FeatureOfInterest or observedProperty on sosa:Observation."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
     skos:topConceptOf cs: ;
-    .
+.
+
+:observation-types
+    a skos:Concept ;
+    skos:prefLabel "Observation Types";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
+    skos:topConceptOf cs: ;
+.
+
+:procedures
+    a skos:Concept ;
+    skos:prefLabel "Procedures";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:observation-type can be used where concepts go in the tern:observationType or sdo:additionalType slot on a tern:Observation or sosa:Observation."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
+    skos:topConceptOf cs: ;
+.
+
+:sampling-types
+    a skos:Concept ;
+    skos:prefLabel "Sampling Types";
+    skos:definition "Vocabularies with the dcat:theme abis/vocab-themes:sample-type can be used where concepts go in the tern:samplingType or sdo:additionalType slot on a tern:Sampling or sosa:Sampling."@en;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
+    skos:topConceptOf cs: ;
+.
