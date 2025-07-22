@@ -7,13 +7,14 @@ from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA, SDO
 TERN = rdflib.Namespace("https://w3id.org/tern/ontologies/tern/")
 ABIS = rdflib.Namespace("https://linked.data.gov.au/def/abis/")
 BDRDS = rdflib.Namespace("https://linked.data.gov.au/dataset/bdr/")
+BDRPR = rdflib.Namespace("https://linked.data.gov.au/def/bdr-pr/")
 
 
 @dataclass
 class VocabGraphDetails:
     graph: rdflib.Graph
     keywords: List[str]
-    themes: List[rdflib.URIRef]
+    themes: List[str]
     token: str
     vocab_uri: rdflib.URIRef  # This is the SKOS:ConceptScheme
     graph_name: Optional[rdflib.URIRef] = None
@@ -39,6 +40,7 @@ def make_voc_graph(multigraph: bool = False):
     ns.bind("schema", SDO)
     ns.bind("abis", ABIS)
     ns.bind("bdr-ds", BDRDS)
+    ns.bind("bdr-pr", BDRPR)
     if multigraph:
         ds = rdflib.Dataset(store=g.store)
         ds.namespace_manager = ns

@@ -572,11 +572,10 @@ class VocabHarvester:
                 if voc_uri not in schemes_harvested:
                     need_harvest_fallback_scheme = True
             else:
-                voc_uri = rdflib.URIRef(f"urn:vocpub:collections")
+                voc_uri = rdflib.URIRef("urn:vocpub:in-collections")
                 g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
-                g.add((voc_uri, DCTERMS.title, rdflib.Literal("Concept Collections")))
-                g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concept Collections")))
-                g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
+                g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Concepts from Collections")))
+                g.add((voc_uri, SKOS.definition, rdflib.Literal("A ConceptScheme generated to catch Concepts that were only members of collections, and no other ConceptSchemes")))
                 add_in_scheme = False
             collection_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.concepts_only_in_collections, g, self.name+"-collections", in_scheme=add_in_scheme)
             new_scheme_vocab_details.append(collection_vocab_detail)
@@ -595,11 +594,10 @@ class VocabHarvester:
                         need_harvest_fallback_scheme = False
                 else:
                     g = make_voc_graph()
-                    voc_uri = rdflib.URIRef(f"urn:vocpub:concepts")
+                    voc_uri = rdflib.URIRef("urn:vocpub:concepts")
                     g.add((voc_uri, RDF.type, SKOS.ConceptScheme))
-                    g.add((voc_uri, DCTERMS.title, rdflib.Literal("Vocabulary Concepts")))
-                    g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Vocabulary Concepts")))
-                    g.add((voc_uri, SKOS.note, rdflib.Literal("A ConceptScheme generated to catch Concepts that were not members of any ConceptScheme or Collection")))
+                    g.add((voc_uri, SKOS.prefLabel, rdflib.Literal("Uncategorised Concepts")))
+                    g.add((voc_uri, SKOS.definition, rdflib.Literal("A ConceptScheme generated to catch Concepts that were not members of any ConceptScheme or Collection")))
                     concepts_vocab_detail = await self.harvest_concepts_into_vocab_graph(voc_uri, self.unaccounted_concepts, g, self.name+"-concepts", in_scheme=False)
                 new_scheme_vocab_details.append(concepts_vocab_detail)
         if use_fallback_scheme and need_harvest_fallback_scheme:
@@ -797,7 +795,7 @@ class VocabHarvester:
                                  themes=all_themes,
                                  token=token,
                                  vocab_uri=scheme_uri,
-                                 # This may be None, in which case we use the catalog named-graph
+                                 # This may be None, in which case we use the catalogue named-graph
                                  graph_name=self.graph_name,
                                  )
 
@@ -900,6 +898,7 @@ class LocalVocabHarvester(VocabHarvester):
 def check_type(graph: rdflib.Graph, root_node: rdflib.URIRef) -> rdflib.URIRef:
     types = set(graph.objects(root_node, RDF.type))
     is_dcat_catalog = DCAT.Catalog in types
+    is_schema_data_catalog = SDO.DataCatalog in types
     is_skos_conceptscheme = SKOS.ConceptScheme in types
     is_skos_collection = SKOS.Collection in types
     is_ontology = OWL.Ontology in types
@@ -907,10 +906,16 @@ def check_type(graph: rdflib.Graph, root_node: rdflib.URIRef) -> rdflib.URIRef:
         raise RuntimeError("A target vocabulary cannot be both SKOS:Collection and SKOS:ConceptScheme at the same time.")
     if is_dcat_catalog and is_skos_conceptscheme:
         raise RuntimeError("A target vocabulary cannot be both DCAT:Catalog and SKOS:Collection at the same time.")
+    if is_schema_data_catalog and is_skos_conceptscheme:
+        raise RuntimeError("A target vocabulary cannot be both Schema:DataCatalog and SKOS:Collection at the same time.")
     if is_dcat_catalog and is_skos_collection:
         raise RuntimeError("A target vocabulary cannot be both DCAT:Catalog and SKOS:ConceptScheme at the same time.")
+    if is_schema_data_catalog and is_skos_collection:
+        raise RuntimeError("A target vocabulary cannot be both Schema:DataCatalog and SKOS:ConceptScheme at the same time.")
     if is_dcat_catalog:
         raise NotImplementedError("Target vocabulary in a DCAT:Catalog not yet implemented.")
+    if is_schema_data_catalog:
+        raise NotImplementedError("Target vocabulary in a Schema:DataCatalog not yet implemented.")
     if is_skos_collection:
         raise NotImplementedError("Target vocabulary as a SKOS:Collection not yet implemented.")
     if not is_skos_conceptscheme:

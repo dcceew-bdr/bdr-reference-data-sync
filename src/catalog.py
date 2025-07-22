@@ -1,18 +1,18 @@
 from typing import List, Dict, Any, Union, Tuple, Optional
 import rdflib
-from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO, DCTERMS
+from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO
 from rdflib.plugins.stores import sparqlstore
 from pathlib import Path
 from .harvesters import VocabHarvester
 from .voc_graph import make_voc_graph, VocabGraphDetails, CatalogGraphDetails
 
-bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogs/", datatype=XSD.anyURI)
+bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogues/", datatype=XSD.anyURI)
 
 async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogGraphDetails:
     try:
         cat_source = catalog_def["source"]
     except LookupError:
-        raise RuntimeError("No source defined on catalog definition.")
+        raise RuntimeError("No source defined on catalogue definition.")
 
     harvesters = {}
     if cat_source is not None and len(cat_source) > 0:
@@ -24,16 +24,16 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     cat_path = Path(".") / "generated" / cat_token
     cat_path.mkdir(exist_ok=True, parents=True)
     cat_graph = make_voc_graph()
-    cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogs/{cat_token}")
+    cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogues/{cat_token}")
     if cat_graph_name is not None:
-        cat_graph_uri = rdflib.URIRef(cat_graph_name)
+        cat_rg_uri = rdflib.URIRef(cat_graph_name)
     else:
-        cat_graph_uri = rdflib.URIRef(cat_uri + "-catalogue")
-    cat_graph.add((cat_uri, RDF.type, DCAT.Catalog))
+        cat_rg_uri = rdflib.URIRef(cat_uri + "-cat-rg")
+    cat_graph.add((cat_uri, RDF.type, SDO.DataCatalog))
     cat_graph.add((cat_uri, VANN.preferredNamespacePrefix, rdflib.Literal("bdr-cat")))
     cat_graph.add((cat_uri, VANN.preferredNamespaceUri, bdr_cat_ns))
     cat_graph.add((cat_uri, DCAT.themeTaxonomy, rdflib.URIRef("https://linked.data.gov.au/def/abis/vocab-themes")))
-    cat_graph.add((cat_uri, DCTERMS.title, rdflib.Literal(catalog_def.get("label"))))
+    cat_graph.add((cat_uri, SDO.name, rdflib.Literal(catalog_def.get("label"))))
     vocabularies: List[Dict] = catalog_def.get("vocabularies", [])
     vocab_graph_details: List[VocabGraphDetails] = []
     for vocab_def in vocabularies:
@@ -46,7 +46,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         else:
             if cat_harvester is None:
                 raise RuntimeError(
-                    "Cannot find a harvester for the catalog source, and none was specified in Vocab Definition")
+                    "Cannot find a harvester for the catalogue source, and none was specified in Vocab Definition")
             harvester = cat_harvester
         harvester.load_def(vocab_def)
         these_vocab_graphs_details: List[VocabGraphDetails] = await harvester.run_procedures()
@@ -62,26 +62,27 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         ns_def_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/ns/{namespace_name}")
         cat_graph.add((ns_def_uri, VANN.preferredNamespacePrefix, rdflib.Literal(namespace_vann_prefix)))
         cat_graph.add((ns_def_uri, VANN.preferredNamespaceUri, rdflib.Literal(namespace_vann_namespace, datatype=XSD.anyURI)))
-        cat_graph.add((cat_uri, DCTERMS.hasPart, ns_def_uri))  # TODO: <-- Is this needed?
-        cat_graph.add((ns_def_uri, DCTERMS.isPartOf, cat_uri))  # TODO: <-- Is this needed?
+        #cat_graph.add((cat_uri, SDO.hasPart, ns_def_uri))  # TODO: <-- Is this needed?
+        #cat_graph.add((ns_def_uri, SDO.isPartOf, cat_uri))  # TODO: <-- Is this needed?
     cat_details = CatalogGraphDetails(
         graph=cat_graph,
         token=cat_token,
         cat_uri=cat_uri,
         content_graphs=vocab_graph_details,
-        graph_name=cat_graph_uri,
+        graph_name=cat_rg_uri,
     )
     for vocab_graph_detail in vocab_graph_details:
         vocab_uri = vocab_graph_detail.vocab_uri
-        cat_graph.add((vocab_uri, RDF.type, DCAT.Dataset))
+        cat_graph.add((vocab_uri, RDF.type, SDO.Dataset))
         keywords: List[str] = vocab_graph_detail.keywords
         if len(keywords) > 0:
-            cat_graph.add((vocab_uri, SDO.keywords, rdflib.Literal(", ".join(keywords))))
+            for keyword in keywords:
+                cat_graph.add((vocab_uri, SDO.keywords, rdflib.Literal(keyword)))
         themes: List[str] = vocab_graph_detail.themes
         for t in themes:
-            cat_graph.add((vocab_uri, DCAT.theme, rdflib.URIRef(t)))
-        cat_graph.add((cat_uri, DCTERMS.hasPart, vocab_uri))
-        cat_graph.add((vocab_uri, DCTERMS.isPartOf, cat_uri))
+            cat_graph.add((vocab_uri, SDO.keywords, rdflib.URIRef(t)))
+        cat_graph.add((cat_uri, SDO.hasPart, vocab_uri))
+        cat_graph.add((vocab_uri, SDO.isPartOf, cat_uri))
         if serialize:
             out_dir = cat_path / "vocabularies"
             out_dir.mkdir(exist_ok=True, parents=True)
@@ -90,7 +91,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
                 vocab_graph_detail.graph.serialize(f, format="turtle")
 
     if serialize:
-        cat_file = cat_path / "catalog.ttl"
+        cat_file = cat_path / "catalogue.ttl"
         with open(cat_file, "wb") as f:
             cat_graph.serialize(f, format="turtle")
     return cat_details
