@@ -2,3 +2,8 @@
 	path = sources/bdr-vocabs
 	url = https://github.com/dcceew-bdr/bdr-vocabs.git
 	branch = main
+[submodule "sources/bdr-catalogues"]
+	path = sources/bdr-catalogues
+	url = https://github.com/dcceew-bdr/bdr-catalogues.git
+	branch = main
+

@@ -309,6 +309,8 @@ cython_debug/
 #.idea/
 
 generated/*.zip
+generated/*.ttl
+generated/*.nq
 generated/*/*
 !generated/.gitkeep
 old-generated/*.zip
