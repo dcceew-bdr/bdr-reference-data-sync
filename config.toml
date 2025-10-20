@@ -83,20 +83,33 @@ root_node = "https://linked.data.gov.au/def/abis/vocab-themes" # Concept Scheme
 source = "file:./sources/abis-themes.ttl"
 
 
+## BDR Catalogues
+[[catalogues]]
+token = "bdr-cat"
+label = "BDR Catalogues"
+source = "file:./sources/bdr-catalogues/manifest.ttl"
+root_node = "https://prez.dev/Manifest"
+harvest_passthrough = true # This instructs to pass the whole source graph into the dest graph, no logical harvesting
+catalogue_uri = "https://linked.data.gov.au/dataset/bdr/catalogues/bdr"
+vann_prefix = "bdr-cat"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/catalogues/"
+graph_name = "urn:bdr:catalogue"
+# This one has no vocabularies. Catalogues only.
+
 ## BDR Vocabularies
 [[catalogues]]
 token = "bdr-cv"
 label = "BDR Vocabularies"
 source = ""  # No Source, each BDR Vocab/Register has its own source file
 
-[[catalogues.vocabularies]] # BDR Observable Properties Register (Vocab)
-name = "bdr-observable-properties"
-keywords = ["properties", "observable properties", "obsprops", "op", "bdr"]
-themes = ["https://linked.data.gov.au/def/abis/vocab-themes/observable-properties"]
-vann_prefix = "bdr-op"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/op/"
-root_node = "https://linked.data.gov.au/dataset/bdr/op" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/obsprops.ttl"
+[[catalogues.vocabularies]] # BDR Statistical Properties Register (Vocab)
+name = "bdr-statistical-properties"
+keywords = ["properties", "statistical properties", "statsprops", "op", "bdr"]
+themes = ["https://linked.data.gov.au/def/abis/vocab-themes/statistical-properties"]
+vann_prefix = "bdr-statsprops"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/statsprops/"
+root_node = "https://linked.data.gov.au/dataset/bdr/statsprops" # Concept Scheme
+source = "file:./sources/bdr-vocabs/vocabs/statsprops.ttl"
 
 [[catalogues.vocabularies]] # BDR Data Types Register (Vocab)
 name = "bdr-datatypes"

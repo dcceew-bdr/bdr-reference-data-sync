@@ -3,10 +3,11 @@ import rdflib
 from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO
 from rdflib.plugins.stores import sparqlstore
 from pathlib import Path
-from .harvesters import VocabHarvester
+from .harvesters import VocabHarvester, CatalogueHarvester
 from .voc_graph import make_voc_graph, VocabGraphDetails, CatalogGraphDetails
 
 bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogues/", datatype=XSD.anyURI)
+
 
 async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogGraphDetails:
     try:
@@ -16,7 +17,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
 
     harvesters = {}
     if cat_source is not None and len(cat_source) > 0:
-        harvesters[cat_source] = cat_harvester = VocabHarvester.build_from_source(cat_source, catalog_def)
+        harvesters[cat_source] = cat_harvester = CatalogueHarvester.build_from_source(cat_source, catalog_def)
     else:
         cat_harvester = None
     cat_token = catalog_def["token"]
@@ -24,7 +25,11 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     cat_path = Path(".") / "generated" / cat_token
     cat_path.mkdir(exist_ok=True, parents=True)
     cat_graph = make_voc_graph()
-    cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogues/{cat_token}")
+    override_cat_uri: Optional[str] = catalog_def.get("catalogue_uri", None)
+    if override_cat_uri is not None:
+        cat_uri = rdflib.URIRef(override_cat_uri)
+    else:
+        cat_uri = rdflib.URIRef(f"https://linked.data.gov.au/dataset/bdr/catalogues/{cat_token}")
     if cat_graph_name is not None:
         cat_rg_uri = rdflib.URIRef(cat_graph_name)
     else:
@@ -35,6 +40,13 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
     cat_graph.add((cat_uri, DCAT.themeTaxonomy, rdflib.URIRef("https://linked.data.gov.au/def/abis/vocab-themes")))
     cat_graph.add((cat_uri, SDO.name, rdflib.Literal(catalog_def.get("label"))))
     vocabularies: List[Dict] = catalog_def.get("vocabularies", [])
+    if cat_harvester:
+        harvest_passthrough = catalog_def.get("harvest_passthrough", False)
+        cat_harvester.load_def(catalog_def)
+        await cat_harvester.harvest_catalogue_details(into_graph=cat_graph, passthrough=harvest_passthrough)
+        cat_vocab_harvester = cat_harvester.make_vocab_harvester()
+    else:
+        cat_vocab_harvester = None
     vocab_graph_details: List[VocabGraphDetails] = []
     for vocab_def in vocabularies:
         vocab_source = vocab_def.get("source", None)
@@ -44,10 +56,10 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
             else:
                 harvester = VocabHarvester.build_from_source(vocab_source, vocab_def)
         else:
-            if cat_harvester is None:
+            if cat_vocab_harvester is None:
                 raise RuntimeError(
                     "Cannot find a harvester for the catalogue source, and none was specified in Vocab Definition")
-            harvester = cat_harvester
+            harvester = cat_vocab_harvester
         harvester.load_def(vocab_def)
         these_vocab_graphs_details: List[VocabGraphDetails] = await harvester.run_procedures()
         vocab_graph_details.extend(these_vocab_graphs_details)

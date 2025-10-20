@@ -21,8 +21,6 @@ VOCABS_IN_INDIVIDUAL_RG = False
 OLIS = Namespace("https://olis.dev/")
 SystemGraphURI = OLIS.system
 
-
-
 async def build_catalogues():
     catalog_defs = config.get_value("catalogues", None)
     if catalog_defs is None or len(catalog_defs) == 0:
@@ -50,21 +48,21 @@ async def build_catalogues():
         cat_ds.add((cat_vg_uri, SCHEMA.name, Literal(f"VirtualGraph for Catalogue {catalog_def['token']}"), SystemGraphURI))
         cat_ds.add((cat_vg_uri, OLIS.isAliasFor, cat_rg_uri, SystemGraphURI))
         cat_ds.add((ALL_CATALOGUES_VG, OLIS.isAliasFor, cat_vg_uri, SystemGraphURI))
-        for vocab_graph_detail in cat_details.content_graphs:
-            vocab_rg_uri: Optional[URIRef] = vocab_graph_detail.graph_name
-            if vocab_rg_uri is None:
+        for content_graph_detail in cat_details.content_graphs:
+            content_rg_uri: Optional[URIRef] = content_graph_detail.graph_name
+            if content_rg_uri is None:
                 if VOCABS_IN_INDIVIDUAL_RG:
-                    vocab_rg_uri = URIRef(str(vocab_graph_detail.vocab_uri).rstrip("/#"))
+                    content_rg_uri = URIRef(str(content_graph_detail.vocab_uri).rstrip("/#"))
                 else:
-                    vocab_rg_uri = cat_rg_uri
-            if vocab_rg_uri == cat_vg_uri:
-                raise RuntimeError("Vocab real-graph URI cannot be the same as the catalogue virtual-graph URI.")
-            for (s, p, o) in vocab_graph_detail.graph:
-                cat_ds.add((s, p, o, vocab_rg_uri))
-            cat_ds.add((ALL_VOCABS_VG, OLIS.isAliasFor, vocab_rg_uri, SystemGraphURI))
-            if vocab_rg_uri != cat_rg_uri:
-                cat_ds.add((vocab_rg_uri, RDF.type, OLIS.RealGraph, SystemGraphURI))
-                cat_ds.add((cat_vg_uri, OLIS.isAliasFor, vocab_rg_uri, SystemGraphURI))
+                    content_rg_uri = cat_rg_uri
+            if content_rg_uri == cat_vg_uri:
+                raise RuntimeError("Vocab/Content real-graph URI cannot be the same as the catalogue virtual-graph URI.")
+            for (s, p, o) in content_graph_detail.graph:
+                cat_ds.add((s, p, o, content_rg_uri))
+            cat_ds.add((ALL_VOCABS_VG, OLIS.isAliasFor, content_rg_uri, SystemGraphURI))
+            if content_rg_uri != cat_rg_uri:
+                cat_ds.add((content_rg_uri, RDF.type, OLIS.RealGraph, SystemGraphURI))
+                cat_ds.add((cat_vg_uri, OLIS.isAliasFor, content_rg_uri, SystemGraphURI))
 
         with open(f"./generated/{catalog_def['token']}_all.nq", "wb") as f:
             cat_ds.serialize(f, format="nquads")

@@ -2,8 +2,8 @@ from itertools import chain
 from pathlib import Path
 from typing import List, Dict, Any, Set, Tuple, Union, Awaitable, Optional
 import asyncio
+import aiometer
 import rdflib
-from rdflib.plugins.stores import sparqlstore
 from rdflib.namespace import RDF, RDFS, DCAT, SKOS, OWL, DCTERMS, VANN, XSD, SDO
 from rdflib.term import Identifier
 from copy import deepcopy, copy
@@ -11,14 +11,17 @@ import httpx
 
 from .local_fetch import get_broadest_concepts, get_all_concepts, get_concept_scheme_hierarchy, get_concept_scheme_concepts, \
     get_collection_immediate_members, get_collection_all_members
-from .sparql_fetch import sparql_describe, sparql_subjects, sparql_objects, sparql_concept_scheme_hierarchy, sparql_concept_scheme_concepts,\
+from .sparql_fetch import sparql_concept_scheme_hierarchy, sparql_concept_scheme_concepts,\
     sparql_collection_all_members, sparql_collection_immediate_members, sparql_all_concepts
 from src.harvesters.sparql_fetch import sparql_broadest_concepts
 from ..config import get_value
 from ..voc_graph import VocabGraphDetails, TERN, make_voc_graph
 
 
-async def async_task_association(task: Union[asyncio.Task, Awaitable], assoc: Any) -> Union[Exception, Tuple]:
+from .base import BaseHarvester, LocalBaseHarvester, SPARQLBaseHarvester
+
+async def async_task_association(pair: tuple[Union[asyncio.Task, Awaitable], Any]) -> Union[Exception, Tuple]:
+    task, assoc = pair
     try:
         res = await task
     except Exception as e:
@@ -26,16 +29,10 @@ async def async_task_association(task: Union[asyncio.Task, Awaitable], assoc: An
     return res, assoc
 
 
-class VocabHarvester:
-    is_init: bool
-    source_graph: rdflib.Graph
+class VocabHarvester(BaseHarvester):
     vocab_type: rdflib.URIRef
-    name: str
-    root_node: rdflib.URIRef
-    root_node_details: rdflib.Graph  # CBD of root_node
     themes: List[rdflib.URIRef]
     keywords: List[str]
-    graph_name: Optional[rdflib.URIRef]
     vann_prefix: Union[str, None]
     vann_namespace: Union[str, None]
     concept_schemes: Set[rdflib.URIRef]
@@ -56,8 +53,7 @@ class VocabHarvester:
     collection_maps: Dict[rdflib.URIRef, Dict]
 
     def __init__(self, source_graph: rdflib.Graph):
-        self.is_init = False
-        self.source_graph = source_graph
+        super().__init__(source_graph)
         self.concepts = set()
         self.broadest_concepts = set()
         self.concept_schemes = set()
@@ -70,7 +66,6 @@ class VocabHarvester:
         self.vann_namespace = None
         self.themes = []
         self.keywords = []
-        self.graph_name = None
         self.reset_filters()
 
     def reset_filters(self):
@@ -83,85 +78,36 @@ class VocabHarvester:
         self.filtered_concept_maps = deepcopy(self.concept_maps)
 
     async def async_init(self):
+        await super().async_init()
         await self.identify_individuals()
         await self.identify_members()
         self.is_init = True
 
     @classmethod
-    def build_from_source(cls, source: str, extra_options: Dict[str, Any]) -> 'VocabHarvester':
+    def build_from_source(cls, source: str, extra_options: dict[str, Any]) -> 'VocabHarvester':
         source_lower = source.lower()
         if source_lower.startswith("sparql:"):
-            store = sparqlstore.SPARQLStore(query_endpoint=source[7:], method='POST', returnFormat='json')
-            source_graph = rdflib.Graph(store=store, bind_namespaces="core")  # bind only core, so SPARQL prefixes in the sparql queries work properly
-            is_graph_db = extra_options.get("is_graph_db", False) # GraphDB-specific harvester behaviour
-            vocab_harvester = SPARQLVocabHarvester(source_graph, is_graph_db=is_graph_db)
-        elif source_lower.startswith("https:") or source_lower.startswith("http:"):
-            source_graph = rdflib.Graph(bind_namespaces="core")  # bind only core, so SPARQL prefixes in the sparql queries work properly
-            with httpx.Client() as client:
-                try:
-                    resp = client.get(source, headers={'Accept': 'text/turtle'}, follow_redirects=True)
-                    resp.raise_for_status()
-                except Exception as e:
-                    print(e)
-                    raise
-                source_graph.parse(resp.read())
-            vocab_harvester = LocalVocabHarvester(source_graph)
+            klass = SPARQLVocabHarvester
+        elif source_lower.startswith("http:") or source_lower.startswith("https:"):
+            klass = LocalVocabHarvester
         elif source_lower.startswith("file:"):
-            file_uri = source[5:]
-            if file_uri.startswith("//"):
-                # This is the file:// protocol, note, it _cannot_ be relative
-                file_uri = file_uri[2:]
-                if "/" not in file_uri:
-                    raise RuntimeError(f"File URI {file_uri} is not <host>/<path>")
-                host, path = file_uri.split("/", 1)
-                if len(host) == 0 or host.lower() == "localhost":
-                    # This is a local file
-                    local_path = Path(path)
-                else:
-                    # This is a remote file
-                    raise NotImplementedError(f"Remote file URIs are not supported: {file_uri}")
-            else:
-                # a "file:" string, this is relative to the current working directory
-                local_path = Path(".") / Path(file_uri)
-            source_graph = rdflib.Graph(bind_namespaces="core")
-            if not local_path.exists():
-                raise RuntimeError(f"File {source} does not exist.")
-            with open(local_path, "rb") as f:
-                source_graph.parse(f)
-            vocab_harvester = LocalVocabHarvester(source_graph)
+            klass = LocalVocabHarvester
         else:
             raise NotImplementedError(f"Unsupported vocab source type: {source}")
-        return vocab_harvester
+        return super().build_from_source(source, klass, extra_options)
 
-    def load_def(self, vocab_def: Dict[str, Any]):
-        try:
-            root_node = vocab_def["root_node"]
-        except LookupError:
-            raise RuntimeError("No root node identified for the vocabulary definition.")
-        if not root_node:
-            root_node = None
-        else:
-            root_node = rdflib.URIRef(root_node)
-        try:
-            name = vocab_def["name"]
-        except LookupError:
-            raise RuntimeError("No name identified for the Vocabulary definition.")
-        if not name:
-            raise RuntimeError("No name identified for the Vocabulary definition.")
-        self.root_node = root_node
-        self.name = name
-        self.themes = [rdflib.URIRef(t) for t in vocab_def.get("themes", [])]
-        self.keywords = vocab_def.get("keywords", [])
-        graph_name_str: Optional[str] = vocab_def.get("graph_name", None)
-        self.graph_name = rdflib.URIRef(graph_name_str) if graph_name_str else None
-        self.vann_prefix = vocab_def.get("vann_prefix", None)
-        self.vann_namespace = vocab_def.get("vann_namespace", None)
-        exclude_concept_schemes = vocab_def.get("exclude_concept_schemes", [])
-        exclude_collections = vocab_def.get("exclude_collections", [])
-        exclude_concepts = vocab_def.get("exclude_concepts", [])
-        include_collections = vocab_def.get("include_collections", [])
-        include_concept_schemes = vocab_def.get("include_concept_schemes", [])
-        include_concepts = vocab_def.get("include_concepts", [])
+    def load_def(self, harvester_def: dict[str, Any]):
+        super().load_def(harvester_def)
+        self.themes = [rdflib.URIRef(t) for t in harvester_def.get("themes", [])]
+        self.keywords = harvester_def.get("keywords", [])
+        self.vann_prefix = harvester_def.get("vann_prefix", None)
+        self.vann_namespace = harvester_def.get("vann_namespace", None)
+        exclude_concept_schemes = harvester_def.get("exclude_concept_schemes", [])
+        exclude_collections = harvester_def.get("exclude_collections", [])
+        exclude_concepts = harvester_def.get("exclude_concepts", [])
+        include_collections = harvester_def.get("include_collections", [])
+        include_concept_schemes = harvester_def.get("include_concept_schemes", [])
+        include_concepts = harvester_def.get("include_concepts", [])
 
         self.exclude_concept_schemes = [rdflib.URIRef(e) for e in exclude_concept_schemes]
         self.exclude_concept_collections = [rdflib.URIRef(e) for e in exclude_collections]
@@ -213,78 +159,84 @@ class VocabHarvester:
 
     async def identify_members(self):
         loop = asyncio.get_event_loop()
-        scheme_hierarchy_jobs = [loop.create_task(async_task_association(self.get_concept_scheme_hierarchy(s), s)) for s in
+
+        # Use aiometer to limit concurrent requests to the SPARQL endpoint
+        coro_args = [(self.get_concept_scheme_hierarchy(s), s) for s in
                                self.concept_schemes if isinstance(s, rdflib.URIRef)]
-        await asyncio.sleep(0)  # yield loop to kick-start the jobs
+        scheme_hierarchy_jobs = []
         accounted_concepts = set()
         all_concepts_in_schemes: Set = set()
-        for i in await asyncio.gather(*scheme_hierarchy_jobs, return_exceptions=True):
-            if isinstance(i, Exception):
-                print(i)
-                continue
-            (t, n), s = i
-            if s not in self.concept_scheme_concepts:
-                print(f"Skipping unknown concept scheme: {s}")
-                continue
-            self.concept_scheme_concepts[s].update(t)
-            self.concept_scheme_concepts[s].update(n)
-            for top_c in t:
-                if top_c not in self.concept_maps:
-                    print(f"Skipping unknown top-concept from this concept scheme: {top_c}")
+        
+        async with aiometer.amap(async_task_association, coro_args, max_at_once=2, max_per_second=8) as results:
+            async for i in results:
+                if isinstance(i, Exception):
+                    print(i)
                     continue
-                all_concepts_in_schemes.add(top_c)
-                accounted_concepts.add(top_c)
-                self.concept_maps[top_c]["concept_schemes"].add(s)
-            for narrow_c in n:
-                if narrow_c not in self.concept_maps:
-                    print(f"Skipping unknown narrower-concept from this concept scheme: {narrow_c}")
+                (t, n), s = i
+                if s not in self.concept_scheme_concepts:
+                    print(f"Skipping unknown concept scheme: {s}")
                     continue
-                all_concepts_in_schemes.add(narrow_c)
-                accounted_concepts.add(narrow_c)
-                self.concept_maps[narrow_c]["concept_schemes"].add(s)
-        scheme_concept_jobs = [loop.create_task(async_task_association(self.get_concept_scheme_concepts(s), s)) for s in
+                self.concept_scheme_concepts[s].update(t)
+                self.concept_scheme_concepts[s].update(n)
+                for top_c in t:
+                    if top_c not in self.concept_maps:
+                        print(f"Skipping unknown top-concept from this concept scheme: {top_c}")
+                        continue
+                    all_concepts_in_schemes.add(top_c)
+                    accounted_concepts.add(top_c)
+                    self.concept_maps[top_c]["concept_schemes"].add(s)
+                for narrow_c in n:
+                    if narrow_c not in self.concept_maps:
+                        print(f"Skipping unknown narrower-concept from this concept scheme: {narrow_c}")
+                        continue
+                    all_concepts_in_schemes.add(narrow_c)
+                    accounted_concepts.add(narrow_c)
+                    self.concept_maps[narrow_c]["concept_schemes"].add(s)
+        coro_args = [(self.get_concept_scheme_concepts(s), s) for s in
                                  self.concept_schemes if isinstance(s, rdflib.URIRef)]
-        await asyncio.sleep(0)  # yield loop to kick-start the jobs
-        for i in await asyncio.gather(*scheme_concept_jobs, return_exceptions=True):
-            if isinstance(i, Exception):
-                print(i)
-                continue
-            c, s = i
-            if s not in self.concept_scheme_concepts:
-                print(f"Skipping unknown concept scheme: {s}")
-                continue
-            self.concept_scheme_concepts[s].update(c)
-            for concept in c:
-                if concept not in self.concept_maps:
-                    print(f"Skipping unknown inScheme concept from this concept scheme: {concept}")
+        async with aiometer.amap(async_task_association, coro_args, max_at_once=2, max_per_second=8) as results:
+            async for i in results:
+                if isinstance(i, Exception):
+                    print(i)
                     continue
-                all_concepts_in_schemes.add(concept)
-                accounted_concepts.add(concept)
-                self.concept_maps[concept]["concept_schemes"].add(s)
-        collection_members_jobs = [loop.create_task(async_task_association(self.get_collection_immediate_members(c), c)) for c in
-                                   self.concept_collections if isinstance(c, rdflib.URIRef)]
-        await asyncio.sleep(0)  # yield loop to kick-start the jobs
+                c, s = i
+                if s not in self.concept_scheme_concepts:
+                    print(f"Skipping unknown concept scheme: {s}")
+                    continue
+                self.concept_scheme_concepts[s].update(c)
+                for concept in c:
+                    if concept not in self.concept_maps:
+                        print(f"Skipping unknown inScheme concept from this concept scheme: {concept}")
+                        continue
+                    all_concepts_in_schemes.add(concept)
+                    accounted_concepts.add(concept)
+                    self.concept_maps[concept]["concept_schemes"].add(s)
+
+        coro_args = [(self.get_collection_immediate_members(c), c) for c in
+                               self.concept_collections if isinstance(c, rdflib.URIRef)]
+
         all_concepts_in_collections: Set = set()
-        for i in await asyncio.gather(*collection_members_jobs, return_exceptions=True):
-            if isinstance(i, Exception):
-                print(i)
-                continue
-            m, c = i
-            if c not in self.collection_members:
-                print(f"Skipping unknown concept collection: {c}")
-                continue
-            self.collection_members[c].update(m)
-            for memb in m:
-                if memb in self.collection_maps:
-                    #member is a collection. Collection in a collection, it's not an unaccounted concept.
-                    self.collection_maps[memb]["parents"].add(c)
-                elif memb not in self.concept_maps:
-                    print(f"Skipping unknown member from this concept collection: {memb}")
+        async with aiometer.amap(async_task_association, coro_args, max_at_once=2, max_per_second=8) as results:
+            async for i in results:
+                if isinstance(i, Exception):
+                    print(i)
                     continue
-                else:
-                    accounted_concepts.add(memb)
-                    all_concepts_in_collections.add(memb)
-                    self.concept_maps[memb]["collections"].add(c)
+                m, c = i
+                if c not in self.collection_members:
+                    print(f"Skipping unknown concept collection: {c}")
+                    continue
+                self.collection_members[c].update(m)
+                for memb in m:
+                    if memb in self.collection_maps:
+                        #member is a collection. Collection in a collection, it's not an unaccounted concept.
+                        self.collection_maps[memb]["parents"].add(c)
+                    elif memb not in self.concept_maps:
+                        print(f"Skipping unknown member from this concept collection: {memb}")
+                        continue
+                    else:
+                        accounted_concepts.add(memb)
+                        all_concepts_in_collections.add(memb)
+                        self.concept_maps[memb]["collections"].add(c)
 
         # these are concepts that appear in collections, but not in any concept scheme hierarchy
         self.concepts_only_in_collections = all_concepts_in_collections.difference(all_concepts_in_schemes)
@@ -728,42 +680,41 @@ class VocabHarvester:
         sch_extra_themes: List[rdflib.URIRef] = [rdflib.URIRef(t) for t in theme_map.get(str(scheme_uri), [])]
 
         top_concepts: Set = concepts.intersection(self.broadest_concepts)
-        loop = asyncio.get_event_loop()
-        jobs = [loop.create_task(async_task_association(self.cbd(c), c)) for c in concepts]
-        await asyncio.sleep(0)  # Yield asyncio to kick-start jobs
-        done_jobs = await asyncio.gather(*jobs, return_exceptions=True)
-        for d in done_jobs:
-            if isinstance(d, Exception):
-                print(d, flush=True)
-                continue
-            g, c = d
-            if isinstance(g, Exception):
-                print(f"Error while getting details from source for concept {c}\n{g}", flush=True)
-                continue
-            elif g is None or len(g) < 1:
-                print(f"No details found for concept {c}", flush=True)
-                continue
-            self.clean_concept(c, g)
-            for t in g.triples((None, None, None)):
-                vocab_graph.add(t)
+        coro_args = [(self.cbd(c), c) for c in concepts]
+        async with aiometer.amap(async_task_association, coro_args, max_at_once=2, max_per_second=8) as results:
+            async for d in results:
+                if isinstance(d, Exception):
+                    print(d, flush=True)
+                    continue
+                g, c = d
+                if isinstance(g, Exception):
+                    print(f"Error while getting details from source for concept {c}\n{g}", flush=True)
+                    continue
+                elif g is None or len(g) < 1:
+                    print(f"No details found for concept {c}", flush=True)
+                    continue
+                self.clean_concept(c, g)
+                for t in g.triples((None, None, None)):
+                    vocab_graph.add(t)
 
         # collections with concepts that are in this scheme
         immediate_applicable_collections = set(c for c in self.filtered_collections if any(m in concepts for m in self.filtered_collection_members[c]))
         applicable_collections = set().union(immediate_applicable_collections)
         for im in immediate_applicable_collections:
             applicable_collections.update(self.get_collection_ancestors(im))
-        jobs = [loop.create_task(async_task_association(self.cbd(c), c)) for c in applicable_collections]
-        await asyncio.sleep(0)  # Yield asyncio to kick-start jobs
-        done_jobs = await asyncio.gather(*jobs, return_exceptions=True)
-        for d in done_jobs:
-            if isinstance(d, Exception):
-                print(d)
-                continue
-            # Got applicable SKOS:Collection CBDs.
-            g, c = d
-            self.clean_collection(c, g)
-            for t in g.triples((None, None, None)):
-                vocab_graph.add(t)
+
+        coros_args = [(self.cbd(c), c) for c in applicable_collections]
+        #done_jobs = await asyncio.gather(*jobs, return_exceptions=True)
+        async with aiometer.amap(async_task_association, coros_args, max_at_once=2, max_per_second=8) as results:
+            async for d in results:
+                if isinstance(d, Exception):
+                    print(d)
+                    continue
+                # Got applicable SKOS:Collection CBDs.
+                g, c = d
+                self.clean_collection(c, g)
+                for t in g.triples((None, None, None)):
+                    vocab_graph.add(t)
         for c in applicable_collections:
             if in_scheme:
                 vocab_graph.add((c, SKOS.inScheme, scheme_uri))
@@ -799,19 +750,6 @@ class VocabHarvester:
                                  graph_name=self.graph_name,
                                  )
 
-
-
-
-
-    async def cbd(self, identifier: rdflib.URIRef) -> rdflib.Graph:
-        raise NotImplementedError()
-
-    async def subjects(self, p, o):
-        raise NotImplementedError()
-
-    async def objects(self, s, p):
-        raise NotImplementedError()
-
     async def get_broadest_concepts(self) -> Set[rdflib.URIRef]:
         raise NotImplementedError()
 
@@ -831,19 +769,9 @@ class VocabHarvester:
         raise NotImplementedError()
 
 
-class SPARQLVocabHarvester(VocabHarvester):
+class SPARQLVocabHarvester(SPARQLBaseHarvester, VocabHarvester):
     def __init__(self, source_graph: rdflib.Graph, is_graph_db: bool = False):
-        super().__init__(source_graph)
-        self.is_graph_db: bool = is_graph_db
-
-    async def cbd(self, identifier: rdflib.URIRef) -> rdflib.Graph:
-        return await sparql_describe(self.source_graph, identifier, explicit=self.is_graph_db)
-
-    async def subjects(self, p, o):
-        return await sparql_subjects(self.source_graph, p, o, explicit=self.is_graph_db)
-
-    async def objects(self, s, p):
-        return await sparql_objects(self.source_graph, s, p, explicit=self.is_graph_db)
+        super().__init__(source_graph, is_graph_db=is_graph_db)
 
     async def get_broadest_concepts(self) -> Set[rdflib.URIRef]:
         return await sparql_broadest_concepts(self.source_graph, explicit=self.is_graph_db)
@@ -863,18 +791,9 @@ class SPARQLVocabHarvester(VocabHarvester):
     async def get_collection_immediate_members(self, c: rdflib.URIRef) -> Set[Identifier]:
         return await sparql_collection_immediate_members(self.source_graph, c, explicit=self.is_graph_db)
 
-class LocalVocabHarvester(VocabHarvester):
+class LocalVocabHarvester(LocalBaseHarvester, VocabHarvester):
     def __init__(self, source_graph: rdflib.Graph):
         super().__init__(source_graph)
-
-    async def cbd(self, identifier: rdflib.URIRef) -> rdflib.Graph:
-        return self.source_graph.cbd(identifier)
-
-    async def subjects(self, p, o):
-        return self.source_graph.subjects(p, o)
-
-    async def objects(self, s, p):
-        return self.source_graph.objects(s, p)
 
     async def get_broadest_concepts(self) -> Set[rdflib.URIRef]:
         return get_broadest_concepts(self.source_graph)
