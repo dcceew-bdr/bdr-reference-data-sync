@@ -3,7 +3,7 @@ from typing import List, Optional
 import rdflib
 from dataclasses import dataclass
 
-from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA, SDO
+from rdflib.namespace import DCAT, SKOS, DCTERMS, VANN, SOSA, SDO, SH, PROF, PROV, FOAF
 TERN = rdflib.Namespace("https://w3id.org/tern/ontologies/tern/")
 ABIS = rdflib.Namespace("https://linked.data.gov.au/def/abis/")
 BDRDS = rdflib.Namespace("https://linked.data.gov.au/dataset/bdr/")
@@ -35,10 +35,14 @@ def make_voc_graph(multigraph: bool = False):
     ns.bind("sosa", SOSA)
     ns.bind("tern", TERN)
     ns.bind("dcat", DCAT)
+    ns.bind("sh", SH)
     ns.bind("dcterms", DCTERMS)
+    ns.bind("prof", PROF)
+    ns.bind("prov", PROV)
     ns.bind("vann", VANN)
     ns.bind("schema", SDO)
     ns.bind("abis", ABIS)
+    ns.bind("foaf", FOAF)
     ns.bind("bdr-ds", BDRDS)
     ns.bind("bdr-pr", BDRPR)
     if multigraph:
