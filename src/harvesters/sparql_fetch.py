@@ -1,4 +1,6 @@
+import asyncio
 import json
+import random
 import urllib
 import urllib.parse
 from typing import Union, List, Dict, Any, Tuple, Set
@@ -29,6 +31,16 @@ def get_httpx_client() -> httpx.AsyncClient:
 get_httpx_client.cache = threading.local()
 
 
+COMMON_HEADERS = {
+    "Origin": "https://vocabs.ardc.edu.au",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+    "Priority": "u=1, i",
+    "Dnt": "1",
+    "Referer": "https://vocabs.ardc.edu.au/yasgui/",
+    "Accept-Encoding": "gzip, deflate",
+    "User-Agent": "BDR/1.0 Vocabulary Harvester"
+}
 async def sparql_describe(
     graph: rdflib.Graph,
     identifier: rdflib.URIRef,
@@ -59,12 +71,35 @@ async def sparql_describe(
         else:
             _query_string = _query_string + "&"+ infer_string
         endpoint = urllib.parse.urlunsplit((scheme, netloc, _url, _query_string, fragment))
-    resp = await client.post(
-        endpoint, data={"query": sparql, **additional_args}, headers={"Accept": "text/turtle", "Accept-Encoding": "gzip, deflate"}
-    )
-    content = await resp.aread()
+    repeat_attempts = 0
+    content: bytes = b''
+    describe_headers = COMMON_HEADERS.copy()
+    describe_headers["Accept"] = "text/turtle"
+    while repeat_attempts < 10:
+        resp = await client.post(
+            endpoint, data={"query": sparql, **additional_args}, headers=describe_headers
+        )
+        if resp.status_code == 429:
+            _ = await resp.aclose()
+            # Too many requests, wait and try again
+            repeat_attempts += 1
+            if repeat_attempts > 9:
+                print("Didn't get DESCRIBE response after 10 attempts, giving up.", identifier)
+                raise RuntimeError("Too many blocked DESCRIBE requests sent to SPARQL endpoint, giving up.\n"+endpoint)
+            # random sleep between 3 and 6 seconds
+            sleep_for = random.uniform(3, 6)
+            print("Throttle for ", sleep_for, "seconds - DESCRIBE", identifier)
+            await asyncio.sleep(sleep_for)
+        else:
+            resp.raise_for_status()
+            content = await resp.aread()
+            break
     g = make_voc_graph()
-    g.parse(data=content, format="turtle")
+    try:
+        g.parse(data=content, format="turtle")
+    except Exception as e:
+        print(f"Error parsing SPARQL response: {e}")
+    print("Got CBD for", identifier)
     return g
 
 
@@ -89,10 +124,30 @@ async def remote_sparql(graph: rdflib.Graph, query, client: Union[httpx.AsyncCli
         else:
             _query_string = _query_string + "&"+ infer_string
         endpoint = urllib.parse.urlunsplit((scheme, netloc, _url, _query_string, fragment))
-    resp = await client.post(
-        endpoint, data={"query": query, **additional_args}, headers={"Accept": "application/sparql-results+json", "Accept-Encoding": "gzip, deflate"}
-    )
-    content = await resp.aread()
+    repeat_attempts = 0
+    content: bytes = b''
+    sparql_headers = COMMON_HEADERS.copy()
+    sparql_headers["Accept"] = "application/sparql-results+json"
+    while repeat_attempts < 10:
+        resp = await client.post(
+            endpoint, data={"query": query, **additional_args}, headers=sparql_headers
+        )
+        if resp.status_code == 429:
+            _ = await resp.aclose()
+            # Too many requests, wait and try again
+            repeat_attempts += 1
+            if repeat_attempts > 9:
+                print("Didn't get sparql JSON response after 10 attempts, giving up.")
+                raise RuntimeError("Too many blocked sparql requests sent to SPARQL endpoint, giving up.\n"+endpoint)
+            # random sleep between 3 and 6 seconds
+            sleep_for = random.uniform(3, 6)
+            print("Throttle for ", sleep_for, "seconds - Sparql")
+            await asyncio.sleep(sleep_for)
+        else:
+            resp.raise_for_status()
+            content = await resp.aread()
+            break
+    
     try:
         content_dict = json.loads(content)
     except Exception as e:
