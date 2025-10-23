@@ -68,7 +68,7 @@ root_node = "https://linked.data.gov.au/def/alum" # Concept Scheme
 
 
 ## ABIS Vocabularies
-[[catcataloguesalogs]]
+[[catalogues]]
 token = "abis"
 label = "ABIS Vocabularies"
 source = ""  # No Catalog-level source, each ABIS Vocabulary has its own source file
