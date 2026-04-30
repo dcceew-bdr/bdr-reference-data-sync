@@ -3,8 +3,9 @@ from pathlib import Path
 from typing import List, Dict, Any, Set, Tuple, Union, Awaitable, Optional
 import asyncio
 import aiometer
+from datetime import datetime, timezone
 import rdflib
-from rdflib.namespace import RDF, RDFS, DCAT, SKOS, OWL, DCTERMS, VANN, XSD, SDO
+from rdflib.namespace import RDF, RDFS, DCAT, SKOS, OWL, DCTERMS, VANN, XSD, SDO, PROV
 from rdflib.term import Identifier
 from copy import deepcopy, copy
 import httpx
@@ -16,7 +17,6 @@ from .sparql_fetch import sparql_concept_scheme_hierarchy, sparql_concept_scheme
 from src.harvesters.sparql_fetch import sparql_broadest_concepts
 from ..config import get_value
 from ..voc_graph import VocabGraphDetails, TERN, make_voc_graph
-
 
 from .base import BaseHarvester, LocalBaseHarvester, SPARQLBaseHarvester
 
@@ -465,6 +465,33 @@ class VocabHarvester(BaseHarvester):
                 collections_to_delete.add(c)
         self.filtered_collections.difference_update(collections_to_delete)
 
+    def add_ingestion_provenance(self, resource_uri: rdflib.URIRef, graph: rdflib.Graph) -> None:
+        activity = rdflib.BNode()
+
+        graph.add((
+            resource_uri,
+            DCTERMS.provenance,
+            rdflib.Literal(
+                "This vocabulary was processed by the BDR reference data ingestion pipeline, "
+                "which applies normalisation steps to improve VocPub compatibility and rendering "
+                "in the BDR Prez system."
+            )
+        ))
+
+        graph.add((resource_uri, PROV.wasGeneratedBy, activity))
+        graph.add((activity, RDF.type, PROV.Activity))
+        graph.add((activity, RDFS.label, rdflib.Literal("BDR reference data ingestion normalisation")))
+        graph.add((activity, PROV.generatedAtTime, rdflib.Literal(datetime.now(timezone.utc).isoformat(), datatype=XSD.dateTime)))
+
+        repo = rdflib.URIRef("https://github.com/dcceew-bdr/bdr-reference-data-sync")
+        script = rdflib.URIRef("https://github.com/dcceew-bdr/bdr-reference-data-sync/tree/main/src/harvesters/vocabularies.py")
+
+        graph.add((activity, PROV.used, repo))
+        graph.add((activity, SDO.codeRepository, repo))
+        graph.add((activity, SDO.softwareSourceCode, script))
+
+        return None
+
     def clean_scheme(self, scheme_uri: rdflib.URIRef, scheme_cbd_graph: rdflib.Graph) -> None:
         for o in list(scheme_cbd_graph.objects(scheme_uri, SKOS.semanticRelation)):
             scheme_cbd_graph.remove((scheme_uri, SKOS.semanticRelation, o))
@@ -685,6 +712,7 @@ class VocabHarvester(BaseHarvester):
         if token is None:
             token = self.extract_label_from_cbd(scheme_uri, scheme_graph, tokenize=True)
         self.clean_scheme(scheme_uri, scheme_graph)
+        self.add_ingestion_provenance(scheme_uri, scheme_graph)
         print("Using token for scheme: " + token)
         existing_vann_prefixes = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespacePrefix))
         existing_vann_namespaces = set(scheme_graph.objects(scheme_uri, VANN.preferredNamespaceUri))
