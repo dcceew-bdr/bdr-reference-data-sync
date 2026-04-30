@@ -20,6 +20,8 @@ from ..voc_graph import VocabGraphDetails, TERN, make_voc_graph
 
 from .base import BaseHarvester, LocalBaseHarvester, SPARQLBaseHarvester
 
+SCHEMA = rdflib.Namespace("https://schema.org/")
+
 async def async_task_association(pair: tuple[Union[asyncio.Task, Awaitable], Any]) -> Union[Exception, Tuple]:
     task, assoc = pair
     try:
@@ -486,6 +488,25 @@ class VocabHarvester(BaseHarvester):
     def clean_concept(self, concept_uri: rdflib.URIRef, concept_cbd_graph: rdflib.Graph) -> None:
         for o in list(concept_cbd_graph.objects(concept_uri, SKOS.semanticRelation)):
             concept_cbd_graph.remove((concept_uri, SKOS.semanticRelation, o))
+        for o in list(concept_cbd_graph.objects(concept_uri, DCTERMS.source)):
+            source_value = str(o)
+            if not isinstance(o, rdflib.URIRef) and not source_value.startswith(("http://", "https://")):
+                concept_cbd_graph.remove((concept_uri, DCTERMS.source, o))
+                concept_cbd_graph.add((concept_uri, SCHEMA.citation, o))
+        semantic_mapping_properties = [
+            SKOS.exactMatch,
+            SKOS.closeMatch,
+            SKOS.broadMatch,
+            SKOS.narrowMatch,
+            SKOS.relatedMatch,
+            SKOS.mappingRelation,
+        ]
+        for p in semantic_mapping_properties:
+            for o in list(concept_cbd_graph.objects(concept_uri, p)):
+                mapping_value = str(o)
+                if isinstance(o, rdflib.Literal) and mapping_value.startswith(("http://", "https://")):
+                    concept_cbd_graph.remove((concept_uri, p, o))
+                    concept_cbd_graph.add((concept_uri, p, rdflib.URIRef(mapping_value)))
         # TODO: remove skos:broaderTransitive, skos:narrowerTransitive ?
         # We add our own skos:topConceptOf
         for o in list(concept_cbd_graph.objects(concept_uri, SKOS.topConceptOf)):
