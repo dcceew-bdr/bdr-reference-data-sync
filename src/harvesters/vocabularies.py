@@ -786,6 +786,11 @@ class VocabHarvester(BaseHarvester):
         if in_scheme:
             for c in concepts:
                 vocab_graph.add((c, SKOS.inScheme, scheme_uri))
+
+                original_schemes = self.concept_maps.get(c, {}).get("concept_schemes", set())
+                for original_scheme in original_schemes:
+                    if original_scheme != scheme_uri:
+                        vocab_graph.add((c, RDFS.isDefinedBy, original_scheme))
         all_keywords = self.keywords.copy()
         all_keywords.extend(sch_extra_keywords)
         all_themes = self.themes.copy()
