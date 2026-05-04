@@ -764,9 +764,20 @@ class VocabHarvester(BaseHarvester):
                 self.clean_collection(c, g)
                 for t in g.triples((None, None, None)):
                     vocab_graph.add(t)
+# Some generated helper vocabularies, such as urn:vocpub:in-collections,
+# are created with in_scheme=False for concepts, but still need their
+# SKOS Collections attached to the single synthetic ConceptScheme so Prez
+# can render collection structures.
         for c in applicable_collections:
+            existing_collection_schemes = set(vocab_graph.objects(c, SKOS.inScheme))
+
             if in_scheme:
                 vocab_graph.add((c, SKOS.inScheme, scheme_uri))
+            elif len(existing_collection_schemes) == 0:
+                graph_schemes = set(vocab_graph.subjects(RDF.type, SKOS.ConceptScheme))
+                if len(graph_schemes) == 1:
+                    fallback_scheme = next(iter(graph_schemes))
+                    vocab_graph.add((c, SKOS.inScheme, fallback_scheme))
             if c not in self.filtered_collection_members:
                 raise RuntimeError(f"Collection {c} is not in filtered_collection_members, did it get filtered out?")
             members: Set = self.filtered_collection_members[c]
