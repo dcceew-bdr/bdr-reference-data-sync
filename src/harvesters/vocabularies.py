@@ -543,6 +543,12 @@ class VocabHarvester(BaseHarvester):
             concept_cbd_graph.remove((concept_uri, SKOS.inScheme, o))
         return None
 
+    def remove_self_referential_same_as(self, graph: rdflib.Graph) -> None:
+        for subject, _, obj in list(graph.triples((None, OWL.sameAs, None))):
+            if subject == obj:
+                graph.remove((subject, OWL.sameAs, obj))
+        return None
+
     async def harvest(self) -> List[VocabGraphDetails]:
         if self.vocab_type == OWL.Ontology:  # This is a special TERN Ontology-ConceptScheme-Vocab, treat differently
             new_scheme_vocab_details = await self.harvest_from_ontology_vocab()
@@ -802,6 +808,7 @@ class VocabHarvester(BaseHarvester):
                 for original_scheme in original_schemes:
                     if original_scheme != scheme_uri:
                         vocab_graph.add((c, RDFS.isDefinedBy, original_scheme))
+        self.remove_self_referential_same_as(vocab_graph)
         all_keywords = self.keywords.copy()
         all_keywords.extend(sch_extra_keywords)
         all_themes = self.themes.copy()
