@@ -567,6 +567,17 @@ class VocabHarvester(BaseHarvester):
                     graph.add((subject, predicate, rdflib.Literal(value, datatype=XSD.anyURI)))
         return None
 
+    def add_tern_scheme_agents(self, graph: rdflib.Graph) -> None:
+        tern_scheme_namespace = "http://linked.data.gov.au/def/tern-cv/"
+        creator = rdflib.URIRef("https://linked.data.gov.au/org/tern")
+        publisher = rdflib.URIRef("https://linked.data.gov.au/org/dcceew")
+
+        for scheme in graph.subjects(RDF.type, SKOS.ConceptScheme):
+            if str(scheme).startswith(tern_scheme_namespace):
+                graph.add((scheme, SCHEMA.creator, creator))
+                graph.add((scheme, SCHEMA.publisher, publisher))
+        return None
+
     async def harvest(self) -> List[VocabGraphDetails]:
         if self.vocab_type == OWL.Ontology:  # This is a special TERN Ontology-ConceptScheme-Vocab, treat differently
             new_scheme_vocab_details = await self.harvest_from_ontology_vocab()
@@ -828,6 +839,7 @@ class VocabHarvester(BaseHarvester):
                         vocab_graph.add((c, RDFS.isDefinedBy, original_scheme))
         self.remove_self_referential_same_as(vocab_graph)
         self.normalise_uri_literals(vocab_graph)
+        self.add_tern_scheme_agents(vocab_graph)
         all_keywords = self.keywords.copy()
         all_keywords.extend(sch_extra_keywords)
         all_themes = self.themes.copy()
