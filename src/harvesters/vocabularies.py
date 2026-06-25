@@ -549,6 +549,24 @@ class VocabHarvester(BaseHarvester):
                 graph.remove((subject, OWL.sameAs, obj))
         return None
 
+    def normalise_uri_literals(self, graph: rdflib.Graph) -> None:
+        uri_literal_predicates = [
+            SCHEMA.citation,
+            SCHEMA.url,
+            SCHEMA.email,
+        ]
+        for predicate in uri_literal_predicates:
+            for subject, _, obj in list(graph.triples((None, predicate, None))):
+                value = str(obj)
+                if (
+                    isinstance(obj, rdflib.Literal)
+                    and value.startswith(("http://", "https://"))
+                    and obj.datatype != XSD.anyURI
+                ):
+                    graph.remove((subject, predicate, obj))
+                    graph.add((subject, predicate, rdflib.Literal(value, datatype=XSD.anyURI)))
+        return None
+
     async def harvest(self) -> List[VocabGraphDetails]:
         if self.vocab_type == OWL.Ontology:  # This is a special TERN Ontology-ConceptScheme-Vocab, treat differently
             new_scheme_vocab_details = await self.harvest_from_ontology_vocab()
@@ -809,6 +827,7 @@ class VocabHarvester(BaseHarvester):
                     if original_scheme != scheme_uri:
                         vocab_graph.add((c, RDFS.isDefinedBy, original_scheme))
         self.remove_self_referential_same_as(vocab_graph)
+        self.normalise_uri_literals(vocab_graph)
         all_keywords = self.keywords.copy()
         all_keywords.extend(sch_extra_keywords)
         all_themes = self.themes.copy()
