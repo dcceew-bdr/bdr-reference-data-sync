@@ -50,6 +50,7 @@ class VocabHarvester(BaseHarvester):
     include_concept_schemes: List[rdflib.URIRef]
     include_concept_collections: List[rdflib.URIRef]
     concept_scheme_concepts: Dict[rdflib.URIRef, Set[rdflib.URIRef]]
+    concept_scheme_top_concepts: Dict[rdflib.URIRef, Set[rdflib.URIRef]]
     collection_members: Dict[rdflib.URIRef, Set[rdflib.URIRef]]
     concept_maps: Dict[rdflib.URIRef, Dict]
     collection_maps: Dict[rdflib.URIRef, Dict]
@@ -62,6 +63,7 @@ class VocabHarvester(BaseHarvester):
         self.concept_collections = set()
         self.collection_members = {}
         self.concept_scheme_concepts = {}
+        self.concept_scheme_top_concepts = {}
         self.concept_maps = {}
         self.collection_maps = {}  # for mapping collections to parent collections
         self.vann_prefix = None
@@ -128,6 +130,7 @@ class VocabHarvester(BaseHarvester):
             # Loads individuals and group memberships that apply for this whole source
             await self.async_init()
         self.reset_filters()
+        self.prefer_unique_top_concept_scheme()
         self.filter()
         new_graphs = await self.harvest()
         return new_graphs
@@ -150,6 +153,7 @@ class VocabHarvester(BaseHarvester):
         self.concept_schemes = set(await self.subjects(RDF.type, SKOS.ConceptScheme))
         for concept_scheme in self.concept_schemes:
             self.concept_scheme_concepts[concept_scheme] = set()
+            self.concept_scheme_top_concepts[concept_scheme] = set()
         self.concept_collections = set(await self.subjects(RDF.type, SKOS.Collection))
         for concept_collection in self.concept_collections:
             self.collection_members[concept_collection] = set()
@@ -184,6 +188,7 @@ class VocabHarvester(BaseHarvester):
                     if top_c not in self.concept_maps:
                         print(f"Skipping unknown top-concept from this concept scheme: {top_c}")
                         continue
+                    self.concept_scheme_top_concepts[s].add(top_c)
                     all_concepts_in_schemes.add(top_c)
                     accounted_concepts.add(top_c)
                     self.concept_maps[top_c]["concept_schemes"].add(s)
@@ -245,6 +250,29 @@ class VocabHarvester(BaseHarvester):
 
         # these are concepts that are not in any collection or concept scheme. Ignore them?
         self.unaccounted_concepts = set(c for c in self.concepts.difference(accounted_concepts) if not str(c).startswith(str(SKOS)))
+
+
+    def prefer_unique_top_concept_scheme(self) -> None:
+        tern_scheme_namespace = "http://linked.data.gov.au/def/tern-cv/"
+        for concept, concept_map in self.concept_maps.items():
+            schemes = concept_map["concept_schemes"]
+            if len(schemes) < 2:
+                continue
+            if (
+                not str(concept).startswith(tern_scheme_namespace)
+                or not all(str(scheme).startswith(tern_scheme_namespace) for scheme in schemes)
+            ):
+                continue
+            top_schemes = {
+                scheme for scheme in schemes
+                if concept in self.concept_scheme_top_concepts.get(scheme, set())
+            }
+            if len(top_schemes) != 1:
+                continue
+            canonical_scheme = next(iter(top_schemes))
+            for scheme in schemes.difference({canonical_scheme}):
+                self.filtered_concept_scheme_concepts.get(scheme, set()).discard(concept)
+        return None
 
 
 
