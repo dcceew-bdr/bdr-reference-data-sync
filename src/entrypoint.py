@@ -22,12 +22,22 @@ VOCABS_IN_INDIVIDUAL_RG = False
 OLIS = Namespace("https://olis.dev/")
 SystemGraphURI = OLIS.system
 
-async def build_catalogues():
+async def build_catalogues(catalogue_tokens: Optional[list[str]] = None):
     catalog_defs = config.get_value("catalogues", None)
     if catalog_defs is None or len(catalog_defs) == 0:
         raise Exception("No catalogues defined")
 
-    for catalog_def in catalog_defs:
+    token_filter = set(catalogue_tokens) if catalogue_tokens else None
+    selected_catalogues = [
+        catalog_def for catalog_def in catalog_defs
+        if token_filter is None or catalog_def.get("token") in token_filter
+    ]
+    if token_filter:
+        missing_tokens = token_filter - {catalog_def.get("token") for catalog_def in selected_catalogues}
+        if missing_tokens:
+            raise RuntimeError("Unknown catalogue token(s): " + ", ".join(sorted(missing_tokens)))
+
+    for catalog_def in selected_catalogues:
         if 'token' not in catalog_def:
             raise RuntimeError("Catalogue entry does not have token property.")
         print(f"Building Catalogue: {catalog_def['token']}", flush=True)
@@ -108,7 +118,13 @@ def entrypoint(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Build BDR reference-data outputs and run maintenance tasks.")
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("build", help="Build catalogue and vocabulary output files.")
+    build_parser = subparsers.add_parser("build", help="Build catalogue and vocabulary output files.")
+    build_parser.add_argument(
+        "--catalogue",
+        action="append",
+        dest="catalogues",
+        help="Catalogue token to build. May be supplied more than once. Defaults to every catalogue.",
+    )
 
     fix_parser = subparsers.add_parser(
         "fix-self-sameas",
@@ -131,7 +147,7 @@ def entrypoint(argv: Optional[list[str]] = None) -> int:
     try:
         if args.command == "fix-self-sameas":
             return loop.run_until_complete(fix_self_same_as(catalogue_tokens=args.catalogues, apply=args.apply))
-        loop.run_until_complete(build_catalogues())
+        loop.run_until_complete(build_catalogues(catalogue_tokens=getattr(args, "catalogues", None)))
     except Exception as e:
         import traceback
         traceback.print_tb(e.__traceback__)
