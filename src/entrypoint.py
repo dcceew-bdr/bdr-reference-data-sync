@@ -10,6 +10,7 @@ from rdflib.namespace import SDO as SCHEMA
 from typing import Optional
 from . import config
 from .catalog import build_catalog
+from .graphdb_maintenance import cleanup_catalogue_self_same_as, iter_graphdb_catalogues
 from .voc_graph import make_voc_graph
 
 # Customisable constants
@@ -68,10 +69,68 @@ async def build_catalogues():
             cat_ds.serialize(f, format="nquads")
 
 
-def entrypoint() -> int:
+async def fix_self_same_as(catalogue_tokens: Optional[list[str]] = None, apply: bool = False) -> int:
+    catalog_defs = config.get_value("catalogues", None)
+    if catalog_defs is None or len(catalog_defs) == 0:
+        raise Exception("No catalogues defined")
+
+    token_filter = set(catalogue_tokens) if catalogue_tokens else None
+    target_catalogues = list(iter_graphdb_catalogues(catalog_defs, tokens=token_filter))
+    if len(target_catalogues) == 0:
+        if token_filter:
+            print("No matching GraphDB SPARQL catalogues found: " + ", ".join(sorted(token_filter)))
+        else:
+            print("No GraphDB SPARQL catalogues found.")
+        return 0
+
+    total_applied_subjects = 0
+    for catalog_def in target_catalogues:
+        result = await cleanup_catalogue_self_same_as(catalog_def, apply=apply)
+        count = len(result.subjects)
+        total_applied_subjects += count if result.applied else 0
+        mode = "APPLIED" if result.applied else "DRY RUN"
+        print(f"[{mode}] {result.token}: found {count} self-referential owl:sameAs triples")
+        print(f"  query endpoint: {result.query_endpoint}")
+        print(f"  update endpoint: {result.update_endpoint}")
+        for subject in result.subjects:
+            print(f"  <{subject}> owl:sameAs <{subject}>")
+
+    if apply:
+        print(f"Applied delete updates for {total_applied_subjects} matching subjects.")
+    else:
+        print("Dry run only. Re-run with --apply to delete these triples upstream.")
+    return 0
+
+
+def entrypoint(argv: Optional[list[str]] = None) -> int:
+    import argparse
     import asyncio
+    parser = argparse.ArgumentParser(description="Build BDR reference-data outputs and run maintenance tasks.")
+    subparsers = parser.add_subparsers(dest="command")
+
+    subparsers.add_parser("build", help="Build catalogue and vocabulary output files.")
+
+    fix_parser = subparsers.add_parser(
+        "fix-self-sameas",
+        help="Remove explicit owl:sameAs triples where subject and object are identical from GraphDB sources.",
+    )
+    fix_parser.add_argument(
+        "--catalogue",
+        action="append",
+        dest="catalogues",
+        help="Catalogue token to fix. May be supplied more than once. Defaults to every GraphDB SPARQL catalogue.",
+    )
+    fix_parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply the GraphDB DELETE updates. Without this, the command only reports matching triples.",
+    )
+
+    args = parser.parse_args(argv)
     loop = asyncio.get_event_loop()
     try:
+        if args.command == "fix-self-sameas":
+            return loop.run_until_complete(fix_self_same_as(catalogue_tokens=args.catalogues, apply=args.apply))
         loop.run_until_complete(build_catalogues())
     except Exception as e:
         import traceback
@@ -79,5 +138,3 @@ def entrypoint() -> int:
         print(e)
         return 1
     return 0
-
-

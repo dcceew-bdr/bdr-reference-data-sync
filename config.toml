@@ -6,6 +6,8 @@
 token = "tern-cv"
 label = "TERN Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
+# Optional for maintenance commands when using a tunnel or non-standard GraphDB route:
+# update_endpoint = "https://graphdb.tern.org.au/repositories/tern_vocabs_core/statements"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg"
 is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
@@ -29,6 +31,8 @@ graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg"
 token = "nrm"
 label = "EMSA Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
+# Optional for maintenance commands when using a tunnel or non-standard GraphDB route:
+# update_endpoint = "https://graphdb.tern.org.au/repositories/dawe_vocabs_core/statements"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/nrm-cv-rg"
 is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
