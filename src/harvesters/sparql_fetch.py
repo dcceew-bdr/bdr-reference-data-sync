@@ -156,6 +156,15 @@ async def remote_sparql(graph: rdflib.Graph, query, client: Union[httpx.AsyncCli
     return jsonresults.JSONResult(content_dict)
 
 
+async def remote_sparql_update(endpoint: str, update: str, client: Union[httpx.AsyncClient, None] = None) -> None:
+    if client is None:
+        client = get_httpx_client()
+    update_headers = COMMON_HEADERS.copy()
+    update_headers["Accept"] = "application/sparql-results+json"
+    resp = await client.post(endpoint, data={"update": update}, headers=update_headers)
+    resp.raise_for_status()
+
+
 async def sparql_subjects(
     graph: rdflib.Graph,
     p: rdflib.URIRef,

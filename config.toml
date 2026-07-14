@@ -6,6 +6,8 @@
 token = "tern-cv"
 label = "TERN Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/tern_vocabs_core"
+# Optional for maintenance commands when using a tunnel or non-standard GraphDB route:
+# update_endpoint = "https://graphdb.tern.org.au/repositories/tern_vocabs_core/statements"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg"
 is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
@@ -29,6 +31,8 @@ graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg"
 token = "nrm"
 label = "EMSA Vocabularies"
 source = "sparql:https://graphdb.tern.org.au/repositories/dawe_vocabs_core"
+# Optional for maintenance commands when using a tunnel or non-standard GraphDB route:
+# update_endpoint = "https://graphdb.tern.org.au/repositories/dawe_vocabs_core/statements"
 # This is the identifier of the named-graph (RG) this catalog gets loaded into
 graph_name = "https://linked.data.gov.au/dataset/bdr/catalogues/nrm-cv-rg"
 is_graph_db = true  # This is a GraphDB SPARQL endpoint, use <onto:explicit> in SPARQL queries
@@ -94,58 +98,20 @@ catalogue_uri = "https://linked.data.gov.au/dataset/bdr/catalogues/bdr"
 vann_prefix = "bdr-cat"
 vann_namespace = "https://linked.data.gov.au/dataset/bdr/catalogues/"
 graph_name = "urn:bdr:catalogue"
-# This one has no vocabularies. Catalogues only.
+# BDR-owned vocabularies and static reference datasets are included through
+# the bdr-catalogues Prez Manifest and are not harvested again here.
 
-## BDR Vocabularies
+[[catalogues.namespaces]]
+# top-level BDR-Dataset namespace
+name = "bdr-ds"
+vann_prefix = "bdr-ds"
+vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
+
+## External Data Roles Vocabulary
 [[catalogues]]
-token = "bdr-cv"
-label = "BDR Vocabularies"
-source = ""  # No Source, each BDR Vocab/Register has its own source file
-
-[[catalogues.vocabularies]] # BDR Statistical Properties Register (Vocab)
-name = "bdr-statistical-properties"
-keywords = ["properties", "statistical properties", "statsprops", "op", "bdr"]
-themes = ["https://linked.data.gov.au/def/abis/vocab-themes/statistical-properties"]
-vann_prefix = "bdr-statsprops"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/statsprops/"
-root_node = "https://linked.data.gov.au/dataset/bdr/statsprops" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/statsprops.ttl"
-
-[[catalogues.vocabularies]] # BDR Data Types Register (Vocab)
-name = "bdr-datatypes"
-keywords = ["data", "datatype", "types", "bdr"]
-themes = ["https://linked.data.gov.au/def/abis/vocab-themes/datatypes"]
-vann_prefix = "bdr-datatypes"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/datatypes/"
-root_node = "https://linked.data.gov.au/dataset/bdr/datatypes" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/datatypes.ttl"
-
-[[catalogues.vocabularies]] # BDR Submitting Organisations Register (Vocab)
-name = "bdr-orgs"
-keywords = ["submitting", "organisations", "organizations", "orgs", "bdr"]
-themes = []
-vann_prefix = "bdr-orgs"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/orgs/"
-root_node = "https://linked.data.gov.au/dataset/bdr/orgs" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/orgs.ttl"
-
-[[catalogues.vocabularies]] # BDR Submission Manifest Resource Roles (Vocab)
-name = "bdr-smrr"
-keywords = ["submission", "manifest", "resource", "roles", "bdr"]
-themes = []
-vann_prefix = "bdr-smrr"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/smrr/"
-root_node = "https://linked.data.gov.au/dataset/bdr/smrr" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/smrr.ttl"
-
-[[catalogues.vocabularies]] # BDR Submission Manifest Resource Roles (Vocab)
-name = "bdr-sma"
-keywords = ["submission", "manifest", "actions", "bdr"]
-themes = []
-vann_prefix = "bdr-sma"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/sma/"
-root_node = "https://linked.data.gov.au/dataset/bdr/sma" # Concept Scheme
-source = "file:./sources/bdr-vocabs/vocabs/sma.ttl"
+token = "data-roles"
+label = "Data Roles Vocabulary"
+source = ""
 
 [[catalogues.vocabularies]] # AGLDWG Data Roles Vocabulary
 name = "data-roles"
@@ -156,13 +122,6 @@ vann_namespace = "https://linked.data.gov.au/def/data-roles/"
 root_node = "https://linked.data.gov.au/def/data-roles" # Concept Scheme
 # This is an example of a HTTPS source, loaded from the web
 source = "https://agldwg.github.io/data-roles/vocabulary.ttl"
-
-
-[[catalogues.namespaces]]
-# top-level BDR-Dataset namespace
-name = "bdr-ds"
-vann_prefix = "bdr-ds"
-vann_namespace = "https://linked.data.gov.au/dataset/bdr/"
 
 [[catalogues]]
 token = "asls"
