@@ -858,13 +858,7 @@ class VocabHarvester(BaseHarvester):
             vocab_graph.add((scheme_uri, SKOS.hasTopConcept, t))
             vocab_graph.add((t, SKOS.topConceptOf, scheme_uri))
         if in_scheme:
-            for c in concepts:
-                vocab_graph.add((c, SKOS.inScheme, scheme_uri))
-
-                original_schemes = self.concept_maps.get(c, {}).get("concept_schemes", set())
-                for original_scheme in original_schemes:
-                    if original_scheme != scheme_uri:
-                        vocab_graph.add((c, RDFS.isDefinedBy, original_scheme))
+            self.add_canonical_scheme_membership(vocab_graph, concepts, scheme_uri)
         self.remove_self_referential_same_as(vocab_graph)
         self.normalise_uri_literals(vocab_graph)
         self.add_tern_scheme_agents(vocab_graph)
@@ -880,6 +874,20 @@ class VocabHarvester(BaseHarvester):
                                  # This may be None, in which case we use the catalogue named-graph
                                  graph_name=self.graph_name,
                                  )
+
+    def add_canonical_scheme_membership(
+        self,
+        vocab_graph: rdflib.Graph,
+        concepts: Set[rdflib.URIRef],
+        scheme_uri: rdflib.URIRef,
+    ) -> None:
+        for concept in concepts:
+            vocab_graph.add((concept, SKOS.inScheme, scheme_uri))
+            original_schemes = self.concept_maps.get(concept, {}).get(
+                "concept_schemes", set()
+            )
+            if any(original_scheme != scheme_uri for original_scheme in original_schemes):
+                vocab_graph.add((concept, RDFS.isDefinedBy, scheme_uri))
 
     async def get_broadest_concepts(self) -> Set[rdflib.URIRef]:
         raise NotImplementedError()
@@ -974,6 +982,3 @@ def check_type(graph: rdflib.Graph, root_node: rdflib.URIRef) -> rdflib.URIRef:
         return OWL.Ontology  # This implies both OWL:Ontology, and ConceptScheme, as so used in TERN
     else:
         return SKOS.ConceptScheme
-
-
-
