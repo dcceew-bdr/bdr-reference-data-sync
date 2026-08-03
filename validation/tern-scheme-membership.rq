@@ -1,0 +1,40 @@
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?issue ?resource ?schemeCount
+WHERE {
+  {
+    SELECT ("multiple concept schemes" AS ?issue) (?concept AS ?resource)
+           (COUNT(DISTINCT ?scheme) AS ?schemeCount)
+    WHERE {
+      GRAPH <https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg> {
+        ?concept a skos:Concept ;
+                 skos:inScheme ?scheme .
+      }
+    }
+    GROUP BY ?concept
+    HAVING (COUNT(DISTINCT ?scheme) > 1)
+  }
+  UNION
+  {
+    SELECT ("missing concept scheme" AS ?issue) (?concept AS ?resource)
+           (0 AS ?schemeCount)
+    WHERE {
+      GRAPH <https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg> {
+        ?concept a skos:Concept .
+        FILTER NOT EXISTS { ?concept skos:inScheme ?scheme }
+      }
+    }
+  }
+  UNION
+  {
+    SELECT ("missing collection scheme" AS ?issue) (?collection AS ?resource)
+           (0 AS ?schemeCount)
+    WHERE {
+      GRAPH <https://linked.data.gov.au/dataset/bdr/catalogues/tern-cv-rg> {
+        ?collection a skos:Collection .
+        FILTER NOT EXISTS { ?collection skos:inScheme ?scheme }
+      }
+    }
+  }
+}
+ORDER BY ?issue ?resource

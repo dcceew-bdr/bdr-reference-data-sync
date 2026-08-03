@@ -1,12 +1,58 @@
 from typing import List, Dict, Any, Union, Tuple, Optional
 import rdflib
-from rdflib import RDF, DCAT, RDFS, VANN, XSD, SDO
+from rdflib import RDF, DCAT, RDFS, SKOS, VANN, XSD, SDO
 from rdflib.plugins.stores import sparqlstore
 from pathlib import Path
 from .harvesters import VocabHarvester, CatalogueHarvester
 from .voc_graph import make_voc_graph, VocabGraphDetails, CatalogGraphDetails
 
 bdr_cat_ns = rdflib.Literal("https://linked.data.gov.au/dataset/bdr/catalogues/", datatype=XSD.anyURI)
+TERN_CV_NAMESPACE = "http://linked.data.gov.au/def/tern-cv/"
+
+
+def normalise_tern_scheme_memberships(
+    vocab_graph_details: List[VocabGraphDetails],
+) -> None:
+    """Resolve TERN multi-scheme concepts after all vocabulary graphs are built.
+
+    GraphDB DESCRIBE responses can include adjacent resources, so a concept removed
+    from a secondary scheme's harvest may still leak back into that vocabulary graph.
+    Applying the rule to the complete set of harvested graphs makes the generated
+    real graph authoritative.
+    """
+    memberships: Dict[rdflib.term.Identifier, set[rdflib.term.Identifier]] = {}
+    top_schemes: Dict[rdflib.term.Identifier, set[rdflib.term.Identifier]] = {}
+
+    for detail in vocab_graph_details:
+        for concept, scheme in detail.graph.subject_objects(SKOS.inScheme):
+            memberships.setdefault(concept, set()).add(scheme)
+        for concept, scheme in detail.graph.subject_objects(SKOS.topConceptOf):
+            top_schemes.setdefault(concept, set()).add(scheme)
+
+    graphs_by_scheme = {
+        detail.vocab_uri: detail.graph for detail in vocab_graph_details
+    }
+    for concept, schemes in memberships.items():
+        if len(schemes) < 2:
+            continue
+        if not str(concept).startswith(TERN_CV_NAMESPACE) or not all(
+            str(scheme).startswith(TERN_CV_NAMESPACE) for scheme in schemes
+        ):
+            continue
+        candidates = top_schemes.get(concept, set()).intersection(schemes)
+        if len(candidates) != 1:
+            continue
+
+        canonical_scheme = next(iter(candidates))
+        for detail in vocab_graph_details:
+            detail.graph.remove((concept, SKOS.inScheme, None))
+        canonical_graph = graphs_by_scheme.get(canonical_scheme)
+        if canonical_graph is None:
+            raise RuntimeError(
+                f"No harvested graph found for canonical TERN scheme {canonical_scheme}"
+            )
+        canonical_graph.add((concept, SKOS.inScheme, canonical_scheme))
+        canonical_graph.add((concept, RDFS.isDefinedBy, canonical_scheme))
 
 
 async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogGraphDetails:
@@ -63,6 +109,7 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         harvester.load_def(vocab_def)
         these_vocab_graphs_details: List[VocabGraphDetails] = await harvester.run_procedures()
         vocab_graph_details.extend(these_vocab_graphs_details)
+    normalise_tern_scheme_memberships(vocab_graph_details)
     namespaces = catalog_def.get("namespaces", [])
     for namespace_def in namespaces:
         namespace_name = str(namespace_def.get("name", "unnamed"))
@@ -107,5 +154,3 @@ async def build_catalog(catalog_def: Dict[str, Any], serialize=True) -> CatalogG
         with open(cat_file, "wb") as f:
             cat_graph.serialize(f, format="turtle")
     return cat_details
-
-
