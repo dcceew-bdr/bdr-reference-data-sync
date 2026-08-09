@@ -2,7 +2,10 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from urllib.parse import urlparse
 import warnings
+
+import httpx
 import rdflib
 from rdflib.namespace import Namespace, PROF, SDO, DCTERMS, RDF
 
@@ -141,6 +144,28 @@ def guess_rdf_file_format(file_path: Path) -> str:
     else:
         raise ValueError(f"Unknown RDF file format for file: {file_path}")
 
+def is_http_artifact(artifact: str) -> bool:
+    return urlparse(artifact).scheme.lower() in {"http", "https"}
+
+def remote_artifact_format(artifact: str) -> str:
+    return guess_rdf_file_format(Path(urlparse(artifact).path))
+
+def load_remote_rdf_artifact(artifact: str, graph: rdflib.Graph) -> None:
+    rdf_format = remote_artifact_format(artifact)
+    if rdf_format in {"nquads", "trig"}:
+        raise NotImplementedError(
+            "N-Quads and TriG formats are not supported for loading into a catalogue graph."
+        )
+    with httpx.Client(follow_redirects=True, timeout=120.0) as client:
+        response = client.get(
+            artifact,
+            headers={
+                "Accept": "text/turtle, application/rdf+xml, application/ld+json"
+            },
+        )
+        response.raise_for_status()
+        graph.parse(data=response.content, format=rdf_format, publicID=artifact)
+
 def load_rdf_resources_into_graph(manifest: PrezManifest, base_path: Path|None, into_graph: rdflib.Graph|None) -> rdflib.Graph:
     if into_graph is None:
         g = make_voc_graph()
@@ -154,6 +179,9 @@ def load_rdf_resources_into_graph(manifest: PrezManifest, base_path: Path|None, 
         role = resource.role
         # TODO: Check the role if its one that we want to load into the graph.
         for artifact in resource.artifacts:
+            if is_http_artifact(artifact):
+                load_remote_rdf_artifact(artifact, g)
+                continue
             rdf_file_artifacts: list[Path]
             if "*" in artifact:
                 # This is a glob pattern, we need to expand it
@@ -176,4 +204,4 @@ def load_rdf_resources_into_graph(manifest: PrezManifest, base_path: Path|None, 
                 if rdf_format == "nquads" or rdf_format == "trig":
                     raise NotImplementedError("N-Quads and TriG formats are not supported for loading into a catalogue graph.")
                 g.parse(artifact_path, format=rdf_format)
-    return g 
+    return g

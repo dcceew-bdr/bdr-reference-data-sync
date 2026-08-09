@@ -11,6 +11,12 @@ the `bdr-catalogues` source repository and loaded through its Prez Manifest.
 They are not harvested a second time by this project. Remote third-party
 vocabularies continue to be harvested from their configured upstream sources.
 
+Prez Manifest artifacts may be local RDF paths or HTTP(S) URLs. This allows
+large generated datasets to remain in controlled object storage while their
+catalogue metadata and artifact declaration remain versioned with the BDR
+catalogues. Remote artifacts must have a recognised RDF filename extension;
+the build follows redirects and fails if the download or RDF parse fails.
+
 An individual catalogue can be built while validating a source change:
 
 ```shell
