@@ -1,70 +1,67 @@
-# TERN reference resources: vocabulary normalisation currently performed by the BDR
+# TERN reference resources: normalisation currently performed by the BDR
 
-**Status:** briefing paper for discussion with TERN
-**Date:** 26 August 2026
-**Scope:** TERN controlled vocabularies harvested from `tern_vocabs_core`; related implications for the TERN Ontology and validators are identified but not analysed in detail
+**Date:** 27 August 2026
+**Scope:** Pipeline normalisatin of TERN controlled vocabularies from `tern_vocabs_core`; BDR-side normalisation snapshots of TERN Ontology and validators
 
 ## Executive summary
 
-The BDR currently transforms harvested TERN vocabulary data because the source repository and the BDR publication model use different units of organisation. The BDR publishes a vocabulary as a self-contained SKOS Concept Scheme conforming to the VocPub publication profile. The TERN source graph also uses collections, nested collections, shared concepts and, in some cases, ontology-style packaging. Scheme membership and ownership are not always explicit enough for a consumer to extract one complete, unambiguous vocabulary document.
+The BDR currently transforms harvested TERN vocabulary, ontologuy and shapes data because the source repository and the BDR publication model use different units of organisation. The BDR publishes a vocabulary as a self-contained SKOS Concept Scheme conforming to the VocPub profile. The TERN source graph also uses collections, nested collections, shared concepts and, in some cases, ontology-style packaging. Scheme membership and ownership are not always explicit enough for a consumer to extract one distinct vocabulary document. And TERN Ontologu and validators lack some OntPub and ValPub specified publication-ready metadata.
 
 The normalisation is therefore doing more than RDF syntax cleanup. It currently:
 
 - constructs one output graph per Concept Scheme;
 - reconstructs concept, collection and top-concept membership within that graph;
 - makes implicit membership explicit so that standard scheme-based queries retrieve complete content;
-- selects a canonical scheme in the limited cases where the source graph supplies sufficient structural evidence;
+- selects a canonical scheme in the limited cases where the source graph supplies sufficient evidence;
 - corrects several RDF node-kind and property-use problems;
 - removes a small amount of redundant or self-referential data; and
-- adds publication and processing metadata required by BDR/VocPub operation.
+- adds publication and processing metadata required by BDR/VocPub operations.
 
-The preferred end state is for source-owned facts to be corrected and maintained by TERN, with each vocabulary available as a profile-conformant artefact at a persistent IRI. The BDR should then be able to retrieve, validate and load an upstream artefact without changing its substantive graph.
+The proposed end state is for source-owned facts to be corrected and maintained by TERN, with each vocabulary available as a profile-conformant artefact at a persistent IRI. The BDR will then be able to retrieve, validate and load an upstream artefact without changing its substantive graph.
 
-Not every current transformation belongs upstream. BDR ingestion provenance, BDR catalogue membership, generated helper schemes, local graph names, themes and keywords are consumer-side concerns. Conversely, vocabulary identity, scheme membership, canonical ownership, source citations, mappings, dates and source-agent metadata should normally be maintained at source. This distinction should guide the proposed pull requests.
+Not every current transformation belongs upstream. BDR ingestion provenance, BDR catalogue membership, generated helper schemes, local graph names, themes and keywords are consumer-side concerns. Conversely, vocabulary identity, scheme membership, canonical ownership, source citations, mappings, dates and source-agent metadata should normally be maintained at source.
 
 ## What the publication profiles mean here
 
 The profiles are packaging and governance conventions layered on established RDF models; they do not replace SKOS, SHACL or OWL.
 
-- **VocPub** is a publication profile of SKOS. It treats one vocabulary document as one `skos:ConceptScheme`, requires the content belonging to that vocabulary to be packaged together, and requires enough metadata for identification, governance, versioning and catalogue use. In particular, the current specification requires one Concept Scheme per vocabulary/file, created and modified dates, creator and publisher IRIs, and consistent structural links. See the [VocPub profile](https://linked.data.gov.au/def/vocpub) and [specification](https://linked.data.gov.au/def/vocpub/spec).
-- **ValPub** is a publication profile for SHACL validators. It applies the same general idea to a shapes graph: a validator should be an identifiable, described and consistently packaged publication artefact, rather than an anonymous collection of shapes. See the [ValPub repository](https://github.com/AGLDWG/valpub-profile).
-- **OntPub** is a publication profile for OWL/RDFS ontologies. It requires publication metadata for the ontology and usable descriptions of the terms it defines. See the [OntPub profile](https://linked.data.gov.au/def/ontpub) and [specification](https://linked.data.gov.au/def/ontpub/spec).
+- **VocPub** treats one vocabulary document as one `skos:ConceptScheme`, requires the content belonging to that vocabulary to be packaged together, and requires enough metadata for identification, governance, versioning and catalogue use. In particular, VocPub requires one Concept Scheme per vocabulary/file, created and modified dates, creator and publisher IRIs, and consistent structural links. See the [VocPub profile](https://linked.data.gov.au/def/vocpub) and [specification](https://linked.data.gov.au/def/vocpub/spec).
+- **ValPub** is a publication profile for SHACL validators. It applies the same general idea to a shapes graph. See the [ValPub repository](https://github.com/AGLDWG/valpub-profile).
+- **OntPub** applies the same general idea to a OWL/RDFS ontologies. See the [OntPub profile](https://linked.data.gov.au/def/ontpub) and [specification](https://linked.data.gov.au/def/ontpub/spec).
 
-This report concentrates on VocPub because that is what the current harvesting code changes. ValPub conformance for the RLP and TERN Ontology validators, and OntPub conformance for the TERN Ontology, are separate work packages. Vocabulary fixes should not be assumed to resolve ontology or validator packaging.
-
-Some of that separate validator work has already been undertaken in the BDR catalogue rather than in this ingestion pipeline. [bdr-catalogues #16](https://github.com/dcceew-bdr/bdr-catalogues/issues/16) tracked validation and repair of catalogue-held validators against ValPub and SHACL profiling packaging recommendations. Its recorded results include the TERN Ontology Shapes validator, `<https://w3id.org/tern/shapes/tern>`, as ValPub-valid after [a local catalogue correction](https://github.com/dcceew-bdr/bdr-catalogues/commit/1fca7db65a206d1bc80210eb2852e48c85562aab). That work is a useful starting point for an upstream TERN change, but it was not vocabulary pipeline normalisation and does not by itself establish that TERN's current source artefact contains the same corrections.
+Some separate validator work has already been undertaken in the BDR catalogue rather than in ingestion pipelines. [bdr-catalogues #16](https://github.com/dcceew-bdr/bdr-catalogues/issues/16) tracked validation and repair of catalogue-held validators against ValPub and SHACL profiling packaging recommendations. Its recorded results include the TERN Ontology Shapes validator, `<https://w3id.org/tern/shapes/tern>`, as ValPub-valid after [a local catalogue correction](https://github.com/dcceew-bdr/bdr-catalogues/commit/1fca7db65a206d1bc80210eb2852e48c85562aab). That work is a useful starting point for an upstream TERN change, but does not by itself establish that TERN's current source artefact contains the same corrections.
 
 ## Current harvesting and normalisation
 
-The BDR currently reads the TERN GraphDB SPARQL endpoint, discovers Concept Schemes, Concepts and Collections, determines hierarchy and membership, filters the material for each output vocabulary, obtains descriptions of the selected resources, and serialises a separate graph for each harvested scheme. During that process it performs the changes below.
+The BDR currently reads the TERN GraphDB SPARQL endpoint, discovers Concept Schemes, Concepts and Collections, determines hierarchy and membership, filters the material for each output vocabulary, obtains descriptions of the selected resources, and serialises a separate graph for each harvested scheme. During that process it performs these changes:
 
 | Area | Current BDR behaviour |
 |---|---|
 | Vocabulary packaging | Emits one RDF graph/file for each `skos:ConceptScheme`. Where source concepts cannot be assigned to a real scheme, the harvester can create synthetic `urn:vocpub:*` helper schemes. |
-| Concept membership | Removes harvested `skos:inScheme` values and reconstructs the value for the output scheme. This prevents adjacent data returned by GraphDB `DESCRIBE` operations from reintroducing external memberships into a vocabulary document. |
+| Concept membership | Removes harvested `skos:inScheme` values and reconstructs the value for the output scheme. |
 | Collection membership | Reconstructs `skos:member` links for applicable collections, including nested collections, and adds `skos:inScheme` to collections in the output vocabulary. |
-| Concepts reachable only through collections | Traverses nested collection structure so that concepts otherwise invisible to `?concept skos:inScheme ?scheme` harvesting can still be included. |
-| Top concepts | Removes source `skos:hasTopConcept` and `skos:topConceptOf` statements from the copied descriptions and reconstructs both directions from the filtered hierarchy. |
-| Concepts in more than one scheme | Where a TERN concept belongs to multiple TERN schemes and is a top concept of exactly one, the harvester treats that scheme as canonical. For its single-scheme output it retains one `skos:inScheme` and adds `rdfs:isDefinedBy` for the canonical scheme. Cases without unique evidence are not safely resolvable by automation. |
+| Concepts reachable only through collections | Traverses nested collection structure so that concepts otherwise invisible to `?concept skos:inScheme ?scheme` harvesting are still included. |
+| Top concepts | Removes source `skos:hasTopConcept` and `skos:topConceptOf` statements and reconstructs both directions from the filtered hierarchy. |
+| Concepts in more than one scheme | Where a TERN concept belongs to multiple schemes and is a top concept of exactly one, the harvester treats that scheme as canonical. For single-scheme output it and adds `rdfs:isDefinedBy` for the canonical scheme. Cases without supporting evidence are not resolved by automation. |
 | Bibliographic sources | Changes a non-web, non-IRI `dcterms:source` value on a Concept to `schema:citation`. |
-| SKOS mappings | Converts HTTP(S) literals used as objects of `skos:exactMatch`, `closeMatch`, `broadMatch`, `narrowMatch`, `relatedMatch` or `mappingRelation` to IRIs. |
-| URI-valued literals | For HTTP(S) literals used with `schema:citation`, `schema:url` and `schema:email`, adds the `xsd:anyURI` datatype where it is missing. |
-| Redundant broad relations | Removes explicit `skos:semanticRelation` from copied schemes, collections and concepts before retaining/reconstructing the more specific relationships. It also removes `dcterms:hasPart` from scheme and collection descriptions when rebuilding local structure. |
+| SKOS mappings | Converts HTTP(S) literals used as objects of `skos:exactMatch`, `relatedMatch` etc. to IRIs. |
+| URI-valued literals | For HTTP(S) literals used with `schema:citation`, `schema:url` and `schema:email`, adds the `xsd:anyURI` datatype. |
+| Redundant broad relations | Removes explicit `skos:semanticRelation` from copied schemes, collections and concepts before retaining/reconstructing the more specific relationships. It also removes `dcterms:hasPart` from scheme and collection descriptions. |
 | Self-equivalence | Removes `owl:sameAs` where subject and object are identical. |
-| Source agents | Adds `schema:creator <https://linked.data.gov.au/org/tern>` and `schema:publisher <https://linked.data.gov.au/org/dcceew>` to harvested TERN schemes. |
-| Namespace metadata | If missing and configured locally, adds `vann:preferredNamespacePrefix` and `vann:preferredNamespaceUri`. |
-| BDR processing provenance | Adds a processing note and a PROV activity identifying the BDR ingestion script and generation time. |
+| Source agents | Adds `schema:creator <https://linked.data.gov.au/org/tern>` and `schema:publisher <https://linked.data.gov.au/org/dcceew>` to schemes. |
+| Namespace metadata | Adds `vann:preferredNamespacePrefix` and `vann:preferredNamespaceUri`. |
+| BDR processing provenance | Adds a processing note and a PROV activity identifying the BDR ingestion script and timestamp. |
 | BDR catalogue enrichment | Adds local catalogue relationships, graph names, themes, keywords and serialisation tokens. |
 
 ## Priority upstream changes to offer TERN
 
 ### 1. Establish one authoritative publication artefact per vocabulary
 
-Each TERN vocabulary should be downloadable as a self-contained RDF artefact centred on exactly one `skos:ConceptScheme`. The artefact should contain its scheme metadata, its Concepts, any Collections used to organise them, the applicable hierarchy and membership statements, and no unrelated vocabulary descriptions.
+Each vocabulary should be downloadable as a self-contained RDF artefact centred on exactly one `skos:ConceptScheme`. The artefact should contain no unrelated vocabulary descriptions.
 
-At minimum the scheme should have a persistent IRI, type, preferred label, definition, created date, maintained modified date, creator and publisher IRIs, and required top-concept structure. A source-controlled validator should be run against the exact artefact that is published—not merely against a larger database from which the artefact is later inferred.
+At minimum the scheme should have a persistent IRI, type, preferred label, definition, created date, maintained modified date, creator and publisher IRIs, and required top-concept structure. A source-controlled validator should be run against the exact artefact.
 
-This is the most important structural change because it turns synchronisation into retrieval of an authoritative resource rather than reconstruction from a shared triple store.
+This important structural change turns synchronisation into retrieval of an authoritative resource rather than reconstruction from a shared triple store.
 
 ### 2. Make scheme membership complete and explicit
 
@@ -78,15 +75,15 @@ The most consequential present gap is content that is discoverable through colle
     skos:inScheme <scheme> .
 ```
 
-This applies to nested Collections as well as leaf Collections and their Concept members. Existing `skos:member` structure should remain; the proposed triples make ownership/discoverability explicit and do not flatten that structure.
+This applies to nested Collections as well as leaf Collections and their Concept members. Existing `skos:member` structure should remain; the proposed triples make ownership/discoverability explicit and do _not_ flatten that structure.
 
-The June 2026 audit recorded in [bdr-ops #243](https://github.com/dcceew-bdr/bdr-ops/issues/243) found 157 TERN Collections without `skos:inScheme`, 152 collection-to-collection links, and 1,317 Concepts reachable through collection membership with no `skos:inScheme`. Those figures describe that audit date and should be rerun against the artefacts used for the pull requests.
+The June 2026 audit recorded in [bdr-ops #243](https://github.com/dcceew-bdr/bdr-ops/issues/243) found 157 TERN Collections without `skos:inScheme`, 152 collection-to-collection links, and 1,317 Concepts reachable through collection membership with no `skos:inScheme`. That audit should be rerun against the artefacts used prior to any pull requests.
 
 ### 3. Resolve canonical ownership of shared concepts
 
-SKOS permits a Concept to be associated with more than one Concept Scheme, but VocPub publication is deliberately document/scheme-centred. TERN Concept IRIs do not encode their scheme, so consumers need explicit graph statements to determine which vocabulary defines the Concept, which schemes it belongs to, and whether another resource reuses it unchanged or derives something new from it.
+SKOS permits a Concept to be associated with more than one Concept Scheme, but VocPub publication is deliberately document/scheme-centred. TERN Concept IRI structure does not encode their scheme, so consumers need explicit graph statements to determine Concept definition and scheme membership.
 
-The same June audit found 60 Concepts with two scheme memberships. For 13, being a top concept in only one scheme gave plausible evidence of canonical ownership; 47 still required curatorial decisions, including one Concept that was a top concept of both schemes. The BDR now resolves only the unique-evidence cases. TERN should confirm those 13 and decide the remainder rather than having the BDR institutionalise guesses.
+The same June audit found 60 Concepts with two scheme memberships. For 13, being a top concept in only one scheme gave plausible evidence of canonical ownership; 47 still require curatorial decisions, including one Concept that was a top concept of both schemes. BDR normalisation resolves only the unique-evidence cases. TERN should confirm those 13 and decide the remainder rather than having the BDR institutionalise guesses.
 
 A useful pattern for an unchanged Concept that is defined by one scheme but intentionally reused in another is:
 
@@ -96,7 +93,7 @@ A useful pattern for an unchanged Concept that is defined by one scheme but inte
     rdfs:isDefinedBy <canonical-scheme> .
 ```
 
-The reused Concept must also appear in the reusing vocabulary's hierarchy as required by VocPub. Depending on the publication workflow, its local `skos:inScheme` can be authored explicitly or supplied by the VocPub expansion rules from that hierarchy. `rdfs:isDefinedBy` disambiguates the defining scheme; it does not prevent membership in another scheme.
+The reused Concept must also appear in the reusing vocabulary's hierarchy as required by VocPub. Depending on the publication workflow, its local `skos:inScheme` can be authored explicitly or supplied by the VocPub expansion rules from that hierarchy. `rdfs:isDefinedBy` disambiguates the defining scheme; it does _not_ prevent membership in another scheme.
 
 `prov:wasDerivedFrom` should be added where there is actual derivation. If the second vocabulary creates a distinct, adapted Concept with its own IRI, the relationship should be expressed from the new Concept to the source Concept:
 
@@ -107,9 +104,9 @@ The reused Concept must also appear in the reusing vocabulary's hierarchy as req
     prov:wasDerivedFrom <source-concept> .
 ```
 
-Using `prov:wasDerivedFrom` from a reused Concept to itself would be incorrect: the same IRI denotes the same Concept, not a newly derived entity. Where an entire vocabulary is derived from another vocabulary, VocPub requirement 2.1.11 recommends `prov:qualifiedDerivation` on the Concept Scheme, with `prov:entity` identifying the source vocabulary and `prov:hadRole` identifying a mode from the Vocabulary Derivation Modes vocabulary—for example, `https://linked.data.gov.au/def/vocdermods/extension`. A simple `prov:wasDerivedFrom` on the scheme is also valid origin metadata under requirement 2.1.07, but the qualified form says how the vocabulary was derived.
+Using `prov:wasDerivedFrom` from a reused Concept to itself would be incorrect: the same IRI denotes the same Concept, not a newly derived entity. Where an entire vocabulary is derived from another vocabulary, VocPub requirement 2.1.11 recommends `prov:qualifiedDerivation` on the Concept Scheme, with `prov:entity` identifying the source vocabulary and `prov:hadRole` identifying a mode from the Vocabulary Derivation Modes vocabulary—for example, `https://linked.data.gov.au/def/vocdermods/extension`. A simple `prov:wasDerivedFrom` on the scheme is also valid origin metadata under requirement 2.1.07.
 
-The modelling policy should therefore cover three separate cases: multi-scheme membership of one unchanged Concept; reuse of that Concept in another vocabulary document; and creation of a distinct derived Concept or vocabulary. The essential outcome is that a consumer can determine definition and provenance without parsing an opaque IRI, relying on repository history or applying a heuristic.
+The modelling policy should therefore cover three separate cases: multi-scheme membership of one unchanged Concept; reuse of that Concept in another vocabulary document; and creation of a distinct derived Concept or vocabulary.
 
 ### 4. Correct value types and property use
 
@@ -126,9 +123,9 @@ The mapping review has a semantic component: converting a literal to an IRI repa
 
 For each scheme, TERN and DCCEEW should agree the creator, publisher and any custodian/attribution roles, using resolvable agent IRIs. Source authorship must remain distinct from BDR ingestion provenance and BDR republication.
 
-Created dates should remain stable. Modified dates (and any explicit version identifiers) should change when the published graph changes and should be machine-readable. This is operationally important: the proposed synchroniser can poll resource IRIs and reload only when the version or modified date changes.
+Created dates should remain stable. Modified dates (and any explicit version identifiers) should change when the published graph changes and should be machine-readable, so that the proposed synchroniser can reload only when the version or modified date changes.
 
-The earlier audit also identified `dcterms:date` alongside more precise created and modified values, untyped or colliding `skos:notation` values, redundant generic SKOS relation statements and occasions where both `skos:exactMatch` and `skos:closeMatch` identify the same target. These are not all current automated fixes and should be treated as review items:
+The following are not all current automated fixes and should be treated as review items:
 
 - prefer explicit created/modified properties over ambiguous `dcterms:date`;
 - audit notation uniqueness and use typed notation systems where necessary;
@@ -150,15 +147,15 @@ The upstream pull requests should not copy the complete current output of the ha
 - BDR ingestion PROV activities and generation timestamps;
 - BDR catalogue membership and BDR real/virtual graph identifiers;
 - BDR-only themes, keywords, filename tokens and namespace registry entries;
-- synthetic `urn:vocpub:in-collections` and `urn:vocpub:concepts` schemes, which are workarounds rather than TERN resources;
+- synthetic `urn:vocpub:in-collections` and `urn:vocpub:concepts` schemes, if neeed;
 - filtering needed to exclude resources that BDR publishes through another catalogue; and
 - defensive cleanup of extra triples returned by a GraphDB `DESCRIBE` implementation.
 
-If TERN publishes complete, single-scheme artefacts, the BDR should validate those artefacts and preserve their source graph. BDR catalogue metadata can then be added in a separate named graph or catalogue resource without rewriting the vocabulary itself.
+The BDR should validate the artefacts and preserve their source graph. BDR catalogue metadata can then be added in a separate named graph or catalogue resource without rewriting the vocabulary itself.
 
 ## Evidence and implementation traceability
 
-The umbrella item is [bdr-ops #198](https://github.com/dcceew-bdr/bdr-ops/issues/198). Its sub-issues and the corresponding implementation evidence are below.
+For current vocbularu normalisation, the umbrella item is [bdr-ops #198](https://github.com/dcceew-bdr/bdr-ops/issues/198). Its sub-issues and the corresponding implementation evidence are below.
 
 | Topic | Issue | BDR implementation evidence | Status/qualification |
 |---|---|---|---|
@@ -171,31 +168,30 @@ The umbrella item is [bdr-ops #198](https://github.com/dcceew-bdr/bdr-ops/issues
 | Creator and publisher | [#207](https://github.com/dcceew-bdr/bdr-ops/issues/207) | [Add agents to TERN Concept Schemes](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/bc849e13064d49ce39177a3b868e6a6ffbe4eada) | Implemented as a BDR rule; roles should be confirmed before upstreaming. |
 | Preserve canonical definition when removing secondary membership | [#208](https://github.com/dcceew-bdr/bdr-ops/issues/208) | [Initial `rdfs:isDefinedBy` handling](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/606e19013e19c5ca30b763aaa2cfa0c39ea5c2ad), [canonical attribution correction](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/17aeda30342c5eaf04dc8572bd96b648b474e1ee) | Implemented for harvested output. |
 | Canonical scheme ambiguity | [#243](https://github.com/dcceew-bdr/bdr-ops/issues/243) | [Prefer a unique top-concept scheme](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/b68b2cef7a933703a0897af95af98e692e565f37), [post-harvest enforcement and diagnostics](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/6ca7b5f2dba28c13912b7a4d7717f7f44153e6b5) | Automation covers only cases with unique structural evidence; curatorial cases remain. |
-| BDR transformation provenance | Not a child issue | [Add ingestion provenance metadata](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/2c3440df388011120709e06f0d21e99728afc993) | BDR-side only; it should not be presented as TERN source provenance. |
+| BDR transformation provenance | Not a child issue | [Add ingestion provenance metadata](https://github.com/dcceew-bdr/bdr-reference-data-sync/commit/2c3440df388011120709e06f0d21e99728afc993) | BDR-side only, not TERN source provenance. |
 
-The repository’s GitHub history reports **no associated pull request** for any of the normalisation commits listed above. They were direct commits to `main`. The issues and commits are therefore the authoritative implementation trail; future TERN work can create the reviewable upstream pull-request trail that is currently absent.
+These issues and commits are the authoritative implementation trail; future TERN work can create reviewable upstream pull-request trails.
 
 ## Proposed delivery sequence
 
-1. Agree the ownership and packaging rules in the meeting: one artefact per scheme, treatment of shared Concepts and Collections, agent roles, and date/version policy.
-2. Re-run diagnostics against TERN’s current source artefacts and record a baseline per vocabulary. Do not treat the June issue counts as current without verification.
-3. Prepare small, reviewable TERN pull requests in this order: metadata/value-kind corrections; explicit collection and concept membership; then canonical ownership decisions.
-4. Add the current VocPub validator to TERN CI and validate the exact distributable files. Where a requirement is genuinely unsuitable, raise and resolve that question in the profile rather than maintaining an undocumented exception.
-5. In parallel, assess the TERN Ontology against OntPub and the RLP validators against ValPub using separate change sets. For the TERN Ontology Shapes validator, begin with the ValPub work recorded in [bdr-catalogues #16](https://github.com/dcceew-bdr/bdr-catalogues/issues/16), compare that corrected catalogue copy with TERN's current source, and upstream the applicable changes rather than repeating the analysis or treating the BDR copy as the source of truth.
+1. Agree the ownership and packaging rules: one artefact per scheme, treatment of shared Concepts and Collections, agent roles, and date/version policy.
+2. Re-run diagnostics against TERN’s current source artefacts - do not treat the June audit as current without verification.
+3. Prepare small, reviewable TERN pull requests in this order: 
+    a. metadata/value-kind corrections; 
+    b. explicit collection and concept membership; 
+    c. canonical ownership decisions.
+4. Add or confirm the current VocPub validator to TERN CI and validate the exact distributable files. Where a requirement is genuinely unsuitable, raise in [VocPub issues](https://github.com/AGLDWG/vocpub-profile/issues).
+5. In parallel, assess the TERN Ontology against OntPub and the RLP validators against ValPub using separate change sets. For the TERN Ontology Shapes validator, begin with the ValPub work recorded in [bdr-catalogues #16](https://github.com/dcceew-bdr/bdr-catalogues/issues/16), compare that updated catalogue copy with TERN's current source, and upstream applicable changes.
 6. Configure persistent IRI resolution to serve the validated artefacts, including clear modified/version signals.
 7. Change the BDR sync to poll and validate those IRIs, compare version/modified metadata, and load unchanged source graphs. Retain only BDR catalogue metadata outside those graphs.
 
-## Decisions requested at the meeting
+## Requested Decisions
 
 - Does TERN agree to one maintained, directly downloadable RDF artefact per Concept Scheme?
-- Which scheme canonically defines each currently shared Concept, which additional scheme memberships are intentional, and which cases represent actual derivation requiring `prov:wasDerivedFrom` or `prov:qualifiedDerivation`?
+- Which scheme canonically defines each currently shared Concept, and which additional scheme memberships are intentional?
 - Which scheme owns each Collection that is currently unscoped or reused?
 - Who should be recorded as creator, publisher and custodian for each family of resources?
-- What event updates `schema:dateModified`/`dcterms:modified`, and is a separate version IRI or version string also maintained?
+- What event updates `schema:dateModified`/`dcterms:modified`, and should a separate version IRI or version string also maintained?
 - Can the persistent resource IRIs resolve directly to the validated RDF artefacts?
-- Are any current TERN applications dependent on materialised generic/transitive SKOS relationships that the BDR presently removes or reconstructs?
+- Are any current TERN applications dependent on materialised generic/transitive SKOS relationships that the BDR presently removes?
 - Are any VocPub, ValPub or OntPub requirements problematic for TERN’s authoring and release workflows? If so, can those cases be brought back as explicit profile change proposals?
-
-## Intended outcome
-
-After the upstream work, each TERN resource used by the BDR should have a stable identity, an authoritative profile-conformant representation, explicit ownership and membership, maintained change metadata, and a resolvable retrieval IRI. The BDR synchroniser should be able to fetch, validate, compare and load that representation without performing substantive graph repair. This reduces duplicate curation, makes TERN’s intent visible to all consumers, and turns the present normalisation code into temporary compatibility logic rather than a second source of truth.
