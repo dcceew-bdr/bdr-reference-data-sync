@@ -1,5 +1,12 @@
 # BDR Reference Data Sync repo
 
+> [!IMPORTANT]  
+> All vocabularies held statically - as files - here have been moved to <https://github.com/dcceew-bdr/resources.bdr.gov.au-data> 
+> The functionality here in Python code is not currently operating and will soon be made redundant by upstream changes
+> to TERN and other vocabs on which the BDR depends.
+>
+> This repository is retained for code reference only to ensure upstream vocab changes match these conversions. 
+
 This repo contains the code for the BDR Reference Data Sync scripts.
 
 This set of scripts harvests and catalogs Controlled Vocabularies, Instance Lists, Codelists, Ontologies and other reference data for the BDR from a variety of sources.

@@ -1,7 +1,7 @@
 # TERN reference resources: normalisation currently performed by the BDR
 
 **Date:** 27 August 2026
-**Scope:** Pipeline normalisatin of TERN controlled vocabularies from `tern_vocabs_core`; BDR-side normalisation snapshots of TERN Ontology and validators
+**Scope:** Pipeline normalisation of TERN controlled vocabularies from `tern_vocabs_core`; BDR-side normalisation snapshots of TERN Ontology and validators
 
 ## Executive summary
 
