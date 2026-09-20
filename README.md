@@ -5,6 +5,10 @@
 > The functionality here in Python code is not currently operating and will soon be made redundant by upstream changes
 > to TERN and other vocabs on which the BDR depends.
 >
+> 2026-09-20: NJC removed ASLS catalogue and vocabs in favour of VocPub-valid copies of the 6 vocabs stored in 
+> <https://github.com/dcceew-bdr/resources.bdr.gov.au-data/tree/main/resources/vocabs/items/asls>. Converted as per
+> notes in that repo's `sources/` folder
+>
 > This repository is retained for code reference only to ensure upstream vocab changes match these conversions. 
 
 This repo contains the code for the BDR Reference Data Sync scripts.
